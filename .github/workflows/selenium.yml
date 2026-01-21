@@ -1,10 +1,8 @@
 name: Selenium Tests
 on:
-  push: # ← Se ejecuta en cada push del boton de actions/workflows run workflow en Github
-    branches: [ main ]
   workflow_dispatch:  # API trigger
     inputs:
-      script:
+      script_key:
         description: 'Script a ejecutar'
         required: true
         default: 'clientes_diario'
@@ -18,27 +16,14 @@ on:
           - personalizado
           - update_df
 jobs:
-  test:
+  scrap:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - name: Build & Run Script
-#      run: |
-#        docker build -t selenium-app .
-#        docker run -d --name selenium \
-#          -p 4444:4444 -p 7900:7900 \
-#          --shm-size=2g \
-#          selenium-app \
-#           "${{ inputs.script }}"
-
       run: |
           docker build -t selenium-app .
-          docker run --rm --shm-size="2g" selenium-app ${{ github.event.inputs.script }}
+          docker run --rm --shm-size="2g" selenium-app ${{ github.event.inputs.script_key }}
 
-
-    - name: Wait for Selenium
-      run: sleep 10
-
-    - name: Test connection
-      run: |
-        curl -f http://localhost:4444/status || echo "Selenium ready"
+    - name: activate Logs
+      run: docker compose logs -f scraper

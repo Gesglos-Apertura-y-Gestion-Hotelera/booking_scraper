@@ -5,7 +5,7 @@ function dispararScraper() {
   var payload = {
     "ref": "main", // o tu rama principal
     "inputs": {
-      "comando_scraper": "clientes_diario" // Aquí cambias el parámetro dinámicamente
+      "script_key": "clientes_diario" // Aquí cambias el parámetro dinámicamente
     }
   };
 

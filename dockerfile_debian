@@ -31,5 +31,4 @@ COPY app/src/ ./src/
 COPY app/ .
 
 # 6. Configurar punto de entrada
-# TODO: remover el parametro  "clientes_diario" para pasarlo unicamente por el appscript
-ENTRYPOINT ["python", "src/main.py", "clientes_diario"]
+ENTRYPOINT ["python", "src/main.py", "{{script_key}}"]
