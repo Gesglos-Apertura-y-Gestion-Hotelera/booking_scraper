@@ -1,0 +1,23 @@
+[project]
+name = "GesglosScraper"
+version = "1.0.0"
+description = "booking scraper for seek reservations"
+authors = [
+    {name = "luis Alberto Chavez"}
+]
+license = {text = "Privative"}
+readme = "README.md"
+requires-python = "3.11.9"
+dependencies = [
+    "pandas (>=2.3.3,<3.0.0)",
+    "datetime (>=6.0,<7.0)",
+    "openpyxl (>=3.1.5,<4.0.0)",
+    "selenium (>=4.40.0,<5.0.0)",
+    "webdriver-manager (>=4.0.2,<5.0.0)"
+]
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

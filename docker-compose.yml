@@ -1,0 +1,8 @@
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: dockerfile_debian  # Aquí especificas cuál archivo usar
+    shm_size: '2gb'                  # Crucial para evitar cierres de Chrome
+    # El comando recibe el parámetro dinámicamente
+    command: ["src/main.py", "clientes_diario"]

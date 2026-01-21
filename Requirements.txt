@@ -1,0 +1,3 @@
+pip install pandas webdriver-manager openpyxl selenium pywin32 tk datetime
+
+pyinstaller --onefile --noconsole Menu.py
