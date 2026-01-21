@@ -1,25 +1,29 @@
 
-function dispararScraper() {
-  var url = "'https://api.github.com/repos/sof-fac/Gesglos/actions/workflows/selenium.yml/dispatches'";
-  var token = "tu_github_pat_aqui";
+  var rawUrl = 'https://api.github.com/repos/Gesglos-Apertura-y-Gestion-Hotelera/booking_scraper/actions/jobs/61062966569/rerun'
+  var url = encodeURI(rawUrl);
+
+
+  var token = "aqui va el token";
   var payload = {
-    "ref": "main", // o tu rama principal
+    "ref": "main",
     "inputs": {
       "script_key": "clientes_diario" // Aquí cambias el parámetro dinámicamente
     }
   };
 
   var options = {
-    "method": "post",
+    "method": "get",
     "contentType": "application/json",
     "headers": {
-      "Authorization": "token " + token,
-      "Accept": "application/vnd.github.v3+json"
+      "Authorization": "Bearer " + token,
+      "Accept": "application/vnd.github.v3+json",
+      muteHttpExceptions: true
     },
     "payload": JSON.stringify(payload)
   };
 
-  UrlFetchApp.fetch(url, options);
+  var response = UrlFetchApp.fetch(url, options);
+  console.log(response);
 }
 
 
