@@ -2,7 +2,7 @@ services:
   scraper:
     build:
       context: .
-      dockerfile: dockerfile_debian  # Aquí especificas cuál archivo usar
+      dockerfile: Dockerfile  # Aquí especificas cuál archivo usar
     shm_size: '2gb'                  # Crucial para evitar cierres de Chrome
     # El comando recibe el parámetro dinámicamente
     command: ["python", "src/main.py", "{{script_key}}"]
