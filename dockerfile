@@ -1,6 +1,6 @@
 # Forzar plataforma amd64 para compatibilidad con Chrome
-FROM --platform=linux/amd64 python:3.11-slim
-
+# FROM --platform=linux/amd64 python:3.11-slim
+FROM python:3.11-slim
 # Evitar diálogos interactivos
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -31,4 +31,5 @@ COPY app/src/ ./src/
 COPY app/ .
 
 # 6. Configurar punto de entrada
-ENTRYPOINT ["python", "src/main.py", "{{script_key}}"]
+ENTRYPOINT ["python", "src/main.py"]
+#, "{{script_key}}"]
