@@ -1,6 +1,7 @@
 name: Selenium Tests
+
 on:
-  workflow_dispatch:  # API trigger
+  workflow_dispatch:
     inputs:
       script_key:
         description: 'Script a ejecutar'
@@ -15,18 +16,20 @@ on:
           - seguimiento_diario
           - personalizado
           - update_df
+
 jobs:
   scrap:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Build & Run Script
-      run: |
-          docker build -t selenium-app .
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Build Docker image
-      run: docker build -f dockerfile -t selenium-app .
+      - name: Build Docker image
+        run: docker build -f dockerfile -t selenium-app .
 
-    - name: Run container
-      run: docker run --shm-size=2gb selenium-app {{script_key}}
+      - name: Run scraper container
+        run: docker run --shm-size=2gb selenium-app ${{ inputs.script_key }}
 
+      - name: Show logs (si falla)
+        if: failure()
+        run: docker logs $(docker ps -lq)
