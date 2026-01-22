@@ -23,7 +23,10 @@ jobs:
     - name: Build & Run Script
       run: |
           docker build -t selenium-app .
-          docker run --rm --shm-size="2g" selenium-app ${{ github.event.inputs.script_key }}
 
-    - name: activate Logs
-      run: docker compose logs -f scraper
+    - name: Build Docker image
+      run: docker build -f dockerfile -t selenium-app .
+
+    - name: Run container
+      run: docker run --shm-size=2gb selenium-app {{script_key}}
+
