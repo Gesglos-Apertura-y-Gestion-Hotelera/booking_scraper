@@ -7,7 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-
+from enviar_sheets_clientes_diario import enviar_sheets_diario
 
 # Obtener la fecha actual y sumar un día para el check-out
 checkin = datetime.now().strftime('%Y-%m-%d')
@@ -141,9 +141,14 @@ if not os.path.exists(ruta_guardado):
 nombre_archivo = os.path.join(ruta_guardado, f'{checkin}.csv')
 
 # Guardar solo las columnas necesarias
-df_hotels[['precio', 'nombre', 'calificacion', 'ciudad', 'check_in', 'check_out']].to_csv(nombre_archivo, index=False, encoding='utf-8-sig')
-logger.info(f"Archivo guardado en: {nombre_archivo}")
-logger.info(f"df_hotels: {df_hotels}")
+df_hotels[['precio', 'nombre', 'calificacion', 'ciudad', 'check_in', 'check_out']]#.to_csv(nombre_archivo, index=False, encoding='utf-8-sig')
+#logger.info(f"Archivo guardado en: {nombre_archivo}")
+#logger.info(f"df_hotels: {df_hotels}")
 
+
+
+URL_WEBAPP="https://script.google.com/macros/s/AKfycbyPzxk_tlVrVvQlZg0k8M0g_lIRifVqgf5EdA7EsdeMGdoHPYwNsZAiRN0Zk0U6EUbl/exec"
+logger.info(hotels_list)
+enviar_sheets_diario(hotels_list, URL_WEBAPP)
 # Cerrar el navegador al finalizar
 driver.quit()
