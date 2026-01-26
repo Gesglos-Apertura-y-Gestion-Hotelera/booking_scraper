@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.ref_name }}
 
       - name: Build Docker image
         run: docker build -f dockerfile -t selenium-app .
