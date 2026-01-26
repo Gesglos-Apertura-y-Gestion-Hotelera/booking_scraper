@@ -2,7 +2,8 @@ name: Selenium Tests
 
 on:
   push:
-    ["testing_github"]
+    branches:
+      - testing/github
   workflow_dispatch:
     inputs:
       script_key:
