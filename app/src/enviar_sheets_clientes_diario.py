@@ -17,6 +17,19 @@ class DataCleaner:
         reviews_count = re.sub(r'\D', '', count_raw)
         
         return [score, avg_review, reviews_count]
+    
+    def limpiar_precio(self, price_raw):
+        if not price_raw:
+            return ["", ""]
+        
+        partes = str(price_raw).split(" ")
+        if len(partes) >= 2:
+            currency = partes[0].strip()
+            price = partes[1].strip()
+            price = partes[1].replace('.', '').strip()
+            return [currency, price]
+                
+        return ["", ""]
 
 class DataTransformer:
     """Responsabilidad: Mapear diccionarios a listas para Sheets."""
@@ -26,12 +39,12 @@ class DataTransformer:
     def transformar_hoteles(self, lista_datos):
         filas = []
         for d in lista_datos:
-            score_data = self.cleaner.limpiar_calificacion(d.get('calificacion', ''))
+            score_data1 = self.cleaner.limpiar_precio(d.get('precio', ''))
+            score_data2 = self.cleaner.limpiar_calificacion(d.get('calificacion', ''))
             
             fila = [
-                d.get('precio', ''),
-                d.get('nombre', ''),
-                *score_data,  # Desempaqueta score, avg_review y count
+                *score_data1,
+                *score_data2,
                 d.get('ciudad', ''),
                 d.get('check_in', ''),
                 d.get('check_out', '')
