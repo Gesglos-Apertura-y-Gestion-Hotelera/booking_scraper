@@ -3,7 +3,8 @@
 FROM python:3.11-slim
 # Evitar diálogos interactivos
 ENV DEBIAN_FRONTEND=noninteractive
-
+ENV LANG=es_CO.UTF-8
+ENV LC-ALL=es_CO.UTF-8
 # 1. Instalar dependencias base necesarias para descargar e instalar Chrome
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
