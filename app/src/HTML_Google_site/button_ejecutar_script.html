@@ -1,0 +1,51 @@
+<button id="btnEjecutar" onclick="enviarAccion()" style="padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-family: sans-serif;">
+  🚀 Ejecutar Script
+</button>
+
+<p id="mensajeEstado" style="font-family: sans-serif; margin-top: 10px; color: #555;"></p>
+
+<script>
+  function enviarAccion() {
+    const btn = document.getElementById("btnEjecutar");
+    const estado = document.getElementById("mensajeEstado");
+
+    // URL de tu Apps Script
+    const urlScript = "https://script.google.com/macros/s/AKfycbx2pQBqAXWQfaUU7p2cEi0hGyiFPt6dz7uxUt6OSV-a5kPjG1dTu6F2i4iadAD7t--xww/exec";
+
+    // Parámetro que quieres enviar
+    const scriptKey = "clientes_diario";
+
+    // Desactivar botón y avisar al usuario
+    btn.disabled = true;
+    btn.style.backgroundColor = "#ccc";
+    estado.innerText = "Enviando orden a Google...";
+
+    // TRUCO: Usar un objeto Image para saltar el bloqueo de CORS
+    // Esto hace que el navegador "pida la imagen" y ejecute tu doGet
+    const img = new Image();
+
+    img.onload = function() {
+      // Este bloque se ejecuta si Google responde con una imagen (poco probable)
+      finalizar();
+    };
+
+    img.onerror = function() {
+      // Aunque falle la "carga de imagen" (porque Google devuelve texto),
+      // la petición LLEGA al script y se ejecuta.
+      finalizar();
+    };
+
+    // Lanzamos la petición agregando un timestamp para evitar el caché
+    img.src = urlScript + "?key=" + scriptKey + "&t=" + new Date().getTime();
+    
+  }
+
+  function finalizar() {
+    const btn = document.getElementById("btnEjecutar");
+    const estado = document.getElementById("mensajeEstado");
+
+    estado.innerText = "✅ Señal enviada. Revisa GitHub Actions en unos segundos.";
+    btn.disabled = false;
+    btn.style.backgroundColor = "#007bff";
+  }
+</script>

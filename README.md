@@ -31,3 +31,55 @@
 ### para ver todos los contenedores (prendidos-apagados):
     sudo docker ps -a
 
+### Diagrama de flujo de proceso:
+```mermaid
+flowchart TD
+    A[Usuario ingresa parámetro\nClientes / Competencia\nGoogle Sites]
+    B[Click en botón Ejecutar]
+    C[Google Apps Script\nrecibe orden]
+    D[Apps Script\nAutenticación]
+    E[Envía orden y datos\nal Runner de GitHub Actions]
+    F[GitHub Actions\nEjecuta Scraper]
+    G[Scraper consulta Booking]
+    H[Resultados obtenidos]
+    I[Apps Script\nvinculado a Sheets]
+    J[Resultados guardados\nen Google Sheets]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+    I --> J
+```
+### diagrama de sequencias
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant S as Google Sites
+    participant AS1 as Apps Script<br/>(Sites)
+    participant GA as GitHub Actions<br/>Runner
+    participant BK as Booking
+    participant AS2 as Apps Script<br/>(Sheets)
+    participant GS as Google Sheets
+
+    U ->> S: Ingresa parámetro<br/>(Clientes / Competencia)
+    U ->> S: Click en botón "Ejecutar"
+    S ->> AS1: Envía orden de ejecución<br/>+ parámetros
+    AS1 ->> AS1: Autenticación / Logueo
+    AS1 ->> GA: Envía request<br/>con parámetros
+    GA ->> GA: Ejecuta scraper
+    GA ->> BK: Scrapea información
+    BK -->> GA: Resultados
+    GA ->> AS2: Envía resultados
+    AS2 ->> GS: Guarda datos
+    GS -->> AS2: Confirmación
+    AS2 -->> GA: OK
+    GA -->> AS1: Proceso finalizado
+    AS1 -->> S: Estado / Confirmación
+```
+
+
