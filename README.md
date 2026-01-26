@@ -31,3 +31,28 @@
 ### para ver todos los contenedores (prendidos-apagados):
     sudo docker ps -a
 
+### Diagrama de flujo de proceso:
+###
+flowchart TD
+    A[Usuario ingresa parámetro<br/>Clientes / Competencia<br/>en Google Sites]
+    B[Click en botón<br/>Ejecutar búsqueda]
+    C[Google Apps Script<br/>recibe la orden]
+    D[Apps Script<br/>se autentica / loguea]
+    E[Envía datos y orden<br/>al Runner de GitHub Actions]
+    F[GitHub Actions ejecuta<br/>Scraper]
+    G[Scraper consulta<br/>Booking]
+    H[Resultados obtenidos]
+    I[Apps Script vinculado<br/>a Google Sheets]
+    J[Resultados guardados<br/>en Google Sheets]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+    I --> J
+
+
