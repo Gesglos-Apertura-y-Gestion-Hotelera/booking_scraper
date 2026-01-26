@@ -2,7 +2,7 @@
 import sys
 import os
 import subprocess
-from logger import logger
+from utils.logger import logger
 
 
 os.environ['PYTHONWARNINGS'] = 'ignore'
@@ -14,8 +14,7 @@ SCRIPTS = {
     'competencia_diario': 'Web_Scraping_Competencia.py',
     'competencia_prevision': 'Web_Scraping_Competencia_Adhoc.py',
     'seguimiento_diario': 'Web_Scraping_Daily_Tracking.py',
-    'personalizado': 'Web_Scryping_Booking.py',
-    'update_df': 'Update_DF.py'
+    'personalizado': 'Web_Scryping_Booking.py'
 }
 
 

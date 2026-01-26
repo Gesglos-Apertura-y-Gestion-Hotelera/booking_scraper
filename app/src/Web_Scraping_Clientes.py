@@ -1,13 +1,13 @@
 import os
 import time
 import pandas as pd
-from logger import logger
+from utils.logger import logger
 from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from enviar_sheets_clientes_diario import enviar_sheets_diario
+from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
 
 # Obtener la fecha actual y sumar un día para el check-out
 checkin = datetime.now().strftime('%Y-%m-%d')
@@ -15,8 +15,7 @@ checkout = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 
 # TODO: cambiar la direccion del archivo parametros para pasarlo dinamicamente
 # Cargar el archivo seleccionado
-nombre_archivo= "/app/database/Parametros.xlsx"
-
+nombre_archivo = "/app/database/Parametros.xlsx"
 
 # Verificar si el archivo existe
 if not os.path.exists(nombre_archivo):
@@ -49,7 +48,11 @@ options.add_argument('--disable-extensions')
 options.add_argument('--disable-setuid-sandbox')
 options.add_argument('--window-size=1920,1080')  # Tamaño de ventana
 
-# Opciones adicionales para estabilidad
+# ⭐ CONFIGURACIÓN PARA COLOMBIA Y COP ⭐
+options.add_argument('--lang=es-CO')
+options.add_experimental_option('prefs', {
+    'intl.accept_languages': 'es-CO,es,en',
+})
 options.add_argument('--disable-blink-features=AutomationControlled')
 options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36')
 
@@ -63,6 +66,26 @@ except Exception as e:
     logger.error(f"❌ Error al iniciar Chrome: {str(e)}")
     exit(1)
 
+# ⭐ ESTABLECER COOKIES DE BOOKING PARA COLOMBIA ⭐
+try:
+    driver.get('https://www.booking.com')
+    time.sleep(2)
+
+    # Establecer cookies para forzar COP y Colombia
+    driver.add_cookie({
+        'name': 'currency',
+        'value': 'COP',
+        'domain': '.booking.com'
+    })
+    driver.add_cookie({
+        'name': 'selected_currency',
+        'value': 'COP',
+        'domain': '.booking.com'
+    })
+    logger.info("✅ Cookies de moneda COP establecidas")
+except Exception as e:
+    logger.warning(f"⚠️ No se pudieron establecer cookies: {e}")
+
 # Lista para almacenar los datos de los hoteles
 hotels_list = []
 
@@ -71,9 +94,19 @@ for cliente_info in clientes_ciudades:
     logger.info(f"Cliente: {cliente_info}")
     cliente = cliente_info['Hotel']
     ciudad = cliente_info['Ciudad']
-    
-    # Crear la URL dinámica para cada cliente
-    url = f'https://www.booking.com/searchresults.es.html?ss={cliente}&checkin={checkin}&checkout={checkout}&group_adults=2&no_rooms=1&group_children=0'
+
+    # ⭐ CREAR URL CON PARÁMETROS DE COP Y COLOMBIA ⭐
+    url = (f'https://www.booking.com/searchresults.es.html?'
+           f'ss={cliente}'
+           f'&checkin={checkin}'
+           f'&checkout={checkout}'
+           f'&group_adults=2'
+           f'&no_rooms=1'
+           f'&group_children=0'
+           f'&selected_currency=COP'
+           f'&changed_currency=1'
+           f'&top_currency=1')
+
     logger.info(f"URL generada: {url}")
 
     # Abrir la página con la URL generada
@@ -90,7 +123,7 @@ for cliente_info in clientes_ciudades:
 
     # Crear un diccionario para almacenar la información del hotel
     hotel_dict = {}
-    
+
     try:
         time.sleep(2)  # Pequeño tiempo de espera para asegurarse de que la página esté completamente cargada
         
@@ -141,11 +174,7 @@ if not os.path.exists(ruta_guardado):
 nombre_archivo = os.path.join(ruta_guardado, f'{checkin}.csv')
 
 # Guardar solo las columnas necesarias
-df_hotels[['precio', 'nombre', 'calificacion', 'ciudad', 'check_in', 'check_out']]#.to_csv(nombre_archivo, index=False, encoding='utf-8-sig')
-#logger.info(f"Archivo guardado en: {nombre_archivo}")
-#logger.info(f"df_hotels: {df_hotels}")
-
-
+df_hotels[['precio', 'nombre', 'calificacion', 'ciudad', 'check_in', 'check_out']]
 
 URL_WEBAPP="https://script.google.com/macros/s/AKfycbyPzxk_tlVrVvQlZg0k8M0g_lIRifVqgf5EdA7EsdeMGdoHPYwNsZAiRN0Zk0U6EUbl/exec"
 logger.info(hotels_list)
