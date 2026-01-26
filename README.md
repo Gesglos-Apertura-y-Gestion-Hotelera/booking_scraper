@@ -10,6 +10,17 @@
 ### por facilidad usa este comando largo:
      docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app {{script_key}}
 
+## Mapeo directo de parámetro → script_key
+```JSON
+{
+    "clientes_diario"      : "Web_Scraping_Clientes.py",
+    "clientes_prevision"   : "Web_Scraping_Clientes_Adhoc.py",
+    "competencia_diario"   : "Web_Scraping_Competencia.py",
+    "competencia_prevision": "Web_Scraping_Competencia_Adhoc.py",
+    "seguimiento_diario"   : "Web_Scraping_Daily_Tracking.py",
+    "personalizado"        : "Web_Scryping_Booking.py"
+}
+```
 ### para detener una imagen:
     sudo docker stop selenium-app
 

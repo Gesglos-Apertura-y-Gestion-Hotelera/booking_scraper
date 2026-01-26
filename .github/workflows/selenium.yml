@@ -1,6 +1,9 @@
 name: Selenium Tests
 
 on:
+  push:
+    branches:
+      - testing/github
   workflow_dispatch:
     inputs:
       script_key:
@@ -15,7 +18,6 @@ on:
           - competencia_prevision
           - seguimiento_diario
           - personalizado
-          - update_df
 
 jobs:
   scrap:
@@ -23,12 +25,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.ref_name }}
 
       - name: Build Docker image
         run: docker build -f dockerfile -t selenium-app .
 
       - name: Run scraper container
-        run: docker run --shm-size=2gb selenium-app ${{ inputs.script_key }}
+        run: |
+            docker run --shm-size=2gb \
+              -e BOOKING_CURRENCY=COP \
+              -e BOOKING_COUNTRY=co \
+              selenium-app ${{ inputs.script_key }}
 
       - name: Show logs (si falla)
         if: failure()
