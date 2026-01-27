@@ -18,6 +18,17 @@ on:
           - competencia_prevision
           - seguimiento_diario
           - personalizado
+      sheet_data:
+        description: 'parametros en Json'
+        required: true
+        default: string
+        type: string
+      check_in:
+        description: 'fecha de ingreso al hotel'
+        type: string
+      check_out:
+        description: 'fecha de salida del hotel'
+        type: string
 
 jobs:
   scrap:
@@ -36,7 +47,10 @@ jobs:
             docker run --shm-size=2gb \
               -e BOOKING_CURRENCY=COP \
               -e BOOKING_COUNTRY=co \
-              selenium-app ${{ inputs.script_key }}
+              selenium-app ${{ inputs.script_key }} \ 
+                ${{ inputs.sheet_data }} \
+                ${{ inputs.check_in }} \
+                ${{ inputs.check_out }} 
 
       - name: Show logs (si falla)
         if: failure()
