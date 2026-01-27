@@ -1,203 +1,137 @@
 #!/usr/bin/env python3
 """
-Web Scraping Clientes - Búsqueda Adhoc (múltiples noches)
+Web Scraping Competencia Adhoc
+Uso: python script.py '[{...}]' '2025-02-01' '2025-02-10'
 """
 import sys
 import json
+import time
 from datetime import datetime, timedelta
-from typing import List, Optional
-from tkinter import Tk, Label, Entry, Button, messagebox
-from tkinter.filedialog import askopenfilename
+from typing import List
 
-import pandas as pd
-
-from utils.logger import logger
+from core.scraper import BookingBaseScraper
 from core.chrome_driver import ChromeDriverFactory
-from core.base_scraper import BookingBaseScraper
-from core.data_models import HotelSearchData
+from utils.logger import logger
+from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
+
+WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyPzxk_tlVrVvQlZg0k8M0g_lIRifVqgf5EdA7EsdeMGdoHPYwNsZAiRN0Zk0U6EUbl/exec"
 
 
-class ClientesAdhocScraper(BookingBaseScraper):
-    """Scraper para búsqueda adhoc con rango de fechas"""
+class CompetenciaAdhocScraper(BookingBaseScraper):
+    """Scraper adhoc para competencia con rango de fechas"""
 
-    def __init__(self, driver, hotels_data: List[HotelSearchData],
-                 checkin: datetime, checkout: datetime):
+    def __init__(self, driver, competidores: List[dict], fecha_inicio: datetime, fecha_fin: datetime):
         super().__init__(driver)
-        self.hotels_data = hotels_data
-        self.checkin = checkin
-        self.checkout = checkout
+        self.competidores = competidores
+        self.fecha_inicio = fecha_inicio
+        self.fecha_fin = fecha_fin
 
     def run(self) -> List[dict]:
-        """
-        Ejecuta scraping para todos los hoteles
-        Itera día por día en el rango de fechas
-        """
+        """Ejecuta scraping para rango de fechas"""
         results = []
-        fecha_actual = self.checkin
+        fecha = self.fecha_inicio
 
-        while fecha_actual < self.checkout:
-            siguiente_dia = fecha_actual + timedelta(days=1)
-            checkin_str = fecha_actual.strftime('%Y-%m-%d')
-            checkout_str = siguiente_dia.strftime('%Y-%m-%d')
+        while fecha < self.fecha_fin:
+            siguiente = fecha + timedelta(days=1)
+            checkin = fecha.strftime('%Y-%m-%d')
+            checkout = siguiente.strftime('%Y-%m-%d')
 
-            logger.info(f"📅 Procesando: {checkin_str}")
+            logger.info(f"📅 {checkin}")
 
-            for hotel_data in self.hotels_data:
+            for comp in self.competidores:
+                # Validar que sea dict
+                if not isinstance(comp, dict):
+                    logger.error(f"❌ Elemento no es dict: {type(comp)} - {comp}")
+                    continue
+
+                competidor = comp.get('competidor') or comp.get('Competidor') or comp.get('hotel') or comp.get(
+                    'Hotel') or ''
+                ciudad = comp.get('ciudad') or comp.get('Ciudad') or ''
+
+                if not competidor or not ciudad:
+                    logger.warning(f"⚠️ Datos incompletos: {comp}")
+                    continue
+
+                # Buscar (competidor + ciudad)
+                search_term = f"{competidor}%20{ciudad}"
+                url = self.build_search_url(search_term, checkin, checkout)
+
+                self.driver.get(url)
+                time.sleep(5)
+                self.close_popup()
+                time.sleep(2)
+
+                # Extraer
                 try:
-                    result = self.search_hotel(hotel_data, checkin_str, checkout_str)
-                    results.append(result.to_dict())
-                    logger.info(f"✅ {result.nombre} - {result.precio}")
+                    nombre = self.extract_name()
+                    precio = self.extract_price()
+                    calificacion = self.extract_rating()
                 except Exception as e:
-                    logger.error(f"❌ Error con {hotel_data.hotel}: {e}")
-                    results.append({
-                        'nombre': hotel_data.hotel,
-                        'precio': '0',
-                        'calificacion': 'Error',
-                        'ciudad': hotel_data.ciudad,
-                        'check_in': checkin_str,
-                        'check_out': checkout_str
-                    })
+                    logger.warning(f"⚠️ {competidor}: {e}")
+                    nombre = competidor
+                    precio = "0"
+                    calificacion = "0"
 
-            fecha_actual = siguiente_dia
+                results.append({
+                    'nombre': nombre,
+                    'precio': precio,
+                    'calificacion': calificacion,
+                    'competidor': competidor,
+                    'ciudad': ciudad,
+                    'check_in': checkin,
+                    'check_out': checkout
+                })
+
+                logger.info(f"✅ {nombre} - {precio}")
+
+            fecha = siguiente
 
         return results
 
+def main():
+    if len(sys.argv) < 4:
+        logger.error("❌ Uso: script.py '[{...}]' 'YYYY-MM-DD' 'YYYY-MM-DD'")
+        sys.exit(1)
 
-def load_data_from_excel() -> List[HotelSearchData]:
-    """Carga datos desde archivo Excel seleccionado por el usuario"""
-    Tk().withdraw()
-    filepath = askopenfilename(
-        title="Selecciona el archivo Excel",
-        filetypes=[("Archivos Excel", "*.xlsx")]
-    )
+    try:
+        parametros_json_str = sys.argv[1]
+        logger.info(f"📊 JSON recibido (primeros 100 chars): {parametros_json_str[:100]}")
 
-    if not filepath:
-        raise ValueError("No se seleccionó archivo")
+        competidores = json.loads(parametros_json_str)
 
-    df = pd.read_excel(filepath, sheet_name='Cliente')
-    logger.info(f"✅ Excel cargado: {len(df)} hoteles")
+        if not isinstance(competidores, list):
+            logger.error(f"❌ JSON no es lista: {type(competidores)}")
+            sys.exit(1)
 
-    return [
-        HotelSearchData(hotel=row['Hotel'], ciudad=row['Ciudad'])
-        for _, row in df.iterrows()
-    ]
+        logger.info(f"✅ JSON parseado: {len(competidores)} competidores")
+        logger.info(f"Primer elemento: {competidores[0] if competidores else 'vacío'}")
 
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ Error parseando JSON: {e}")
+        logger.error(f"JSON recibido: {parametros_json_str}")
+        sys.exit(1)
 
-def load_data_from_json(json_str: str) -> List[HotelSearchData]:
-    """Carga datos desde JSON"""
-    data = json.loads(json_str)
-    logger.info(f"✅ JSON cargado: {len(data)} hoteles")
-    return [HotelSearchData.from_dict(item) for item in data]
+    fecha_inicio = datetime.strptime(sys.argv[2], '%Y-%m-%d')
+    fecha_fin = datetime.strptime(sys.argv[3], '%Y-%m-%d')
 
+    logger.info(f"📅 {fecha_inicio.date()} → {fecha_fin.date()}")
 
-def save_results(results: List[dict], checkin: str, checkout: str):
-    """Guarda resultados en CSV"""
-    import os
-
-    df = pd.DataFrame(results)
-    home_dir = os.path.expanduser("~")
-    save_dir = os.path.join(home_dir, 'Documents', 'scraping_results', 'Clientes_Adhoc')
-
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-    filename = os.path.join(save_dir, f'{checkin}_to_{checkout}.csv')
-    df.to_csv(filename, index=False, encoding='utf-8-sig')
-
-    logger.info(f"💾 Guardado en: {filename}")
-    return filename
-
-
-def run_with_gui():
-    """Modo GUI con entrada de fechas"""
-
-    def on_search():
-        try:
-            # Obtener fechas
-            checkin_str = checkin_entry.get()
-            checkout_str = checkout_entry.get()
-            checkin = datetime.strptime(checkin_str, '%Y-%m-%d')
-            checkout = datetime.strptime(checkout_str, '%Y-%m-%d')
-
-            # Cerrar ventana
-            root.destroy()
-
-            # Cargar datos
-            hotels_data = load_data_from_excel()
-
-            # Ejecutar scraping
-            driver = ChromeDriverFactory.create_gui_driver()
-            ChromeDriverFactory.setup_booking_cookies(driver)
-
-            try:
-                scraper = ClientesAdhocScraper(driver, hotels_data, checkin, checkout)
-                results = scraper.run()
-
-                # Guardar
-                filename = save_results(results, checkin_str, checkout_str)
-                messagebox.showinfo("Completado", f"Guardado en:\n{filename}")
-
-            finally:
-                driver.quit()
-
-        except ValueError as e:
-            messagebox.showerror("Error", f"Formato de fecha incorrecto: {e}")
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
-
-    # Crear ventana
-    root = Tk()
-    root.title("Búsqueda Adhoc de Hoteles")
-    root.geometry("400x200")
-
-    Label(root, text="Check-in (YYYY-MM-DD):").pack(pady=5)
-    checkin_entry = Entry(root)
-    checkin_entry.pack()
-
-    Label(root, text="Check-out (YYYY-MM-DD):").pack(pady=5)
-    checkout_entry = Entry(root)
-    checkout_entry.pack()
-
-    Button(root, text="Buscar", command=on_search).pack(pady=20)
-
-    root.mainloop()
-
-
-def run_headless(json_str: str, checkin_str: str, checkout_str: str):
-    """Modo headless para Docker"""
-    checkin = datetime.strptime(checkin_str, '%Y-%m-%d')
-    checkout = datetime.strptime(checkout_str, '%Y-%m-%d')
-
-    hotels_data = load_data_from_json(json_str)
-
+    # Ejecutar
     driver = ChromeDriverFactory.create_headless_driver()
     ChromeDriverFactory.setup_booking_cookies(driver)
 
     try:
-        scraper = ClientesAdhocScraper(driver, hotels_data, checkin, checkout)
+        scraper = CompetenciaAdhocScraper(driver, competidores, fecha_inicio, fecha_fin)
         results = scraper.run()
 
-        filename = save_results(results, checkin_str, checkout_str)
-        logger.info(f"✅ COMPLETADO: {len(results)} resultados")
+        # Enviar a Sheets
+        logger.info(f"📤 Enviando {len(results)} resultados")
+        # TODO: configurar si este es el lugar correcto para enviar la informacion del scraper o si debe ir a otro archivo
+        enviar_sheets_diario(results, WEBAPP_URL)
+        logger.info("✅ COMPLETADO")
 
     finally:
         driver.quit()
-
-
-def main():
-    """Punto de entrada"""
-    logger.info("🚀 SCRAPING CLIENTES ADHOC")
-
-    if len(sys.argv) >= 3:
-        # Modo headless: main.py '[json]' '2025-01-01' '2025-01-31'
-        json_data = sys.argv[1]
-        checkin = sys.argv[2]
-        checkout = sys.argv[3]
-        run_headless(json_data, checkin, checkout)
-    else:
-        # Modo GUI
-        run_with_gui()
-
 
 if __name__ == "__main__":
     main()
