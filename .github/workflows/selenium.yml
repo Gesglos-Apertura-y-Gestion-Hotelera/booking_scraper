@@ -69,7 +69,7 @@ jobs:
             -e BOOKING_COUNTRY=co \
             selenium-app \
             "${{ steps.params.outputs.script_key }}" \
-            '${{ steps.params.outputs.sheet_data }}' \
+            "${{ steps.params.outputs.sheet_data }}" \
             "${{ steps.params.outputs.check_in }}" \
             "${{ steps.params.outputs.check_out }}"
 
