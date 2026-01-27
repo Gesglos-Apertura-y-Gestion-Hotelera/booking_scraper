@@ -12,11 +12,10 @@ import pandas as pd
 from utils.logger import logger
 from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
 from core.chrome_driver import ChromeDriverFactory
-from core.base_scraper import BookingBaseScraper
+from core.scraper import BookingBaseScraper
 from core.data_models import HotelSearchData
 
 WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyPzxk_tlVrVvQlZg0k8M0g_lIRifVqgf5EdA7EsdeMGdoHPYwNsZAiRN0Zk0U6EUbl/exec"
-EXCEL_PATH = "/app/database/Parametros.xlsx"
 
 
 class ClientesDiarioScraper(BookingBaseScraper):
@@ -60,7 +59,7 @@ def load_data(json_str: Optional[str] = None) -> List[HotelSearchData]:
         data = json.loads(json_str)
         logger.info(f"✅ JSON cargado: {len(data)} hoteles")
         return [HotelSearchData.from_dict(item) for item in data]
-
+    return []
 
 
 def main():
