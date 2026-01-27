@@ -8,7 +8,7 @@
     docker run --shm-size=2gb selenium-app {{script_key}}
 
 ### por facilidad usa este comando largo:
-     docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app {{script_key}}
+      sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app clientes_diario '[{"ciudad":"Mariquita","hotel":"Hotel Brisas"},{"ciudad":"Medellin","hotel":"BotáNica"}]' '2026-03-01' '2026-03-03'
 
 ## Mapeo directo de parámetro → script_key
 ```JSON
