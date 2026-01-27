@@ -49,21 +49,6 @@ class ChromeDriverFactory:
         return driver
 
     @staticmethod
-    def create_gui_driver() -> WebDriver:
-        """Crea driver con GUI para desarrollo local"""
-        options = webdriver.ChromeOptions()
-        options.add_argument('--lang=es-CO')
-        options.add_experimental_option('prefs', {
-            'intl.accept_languages': 'es-CO,es,en',
-        })
-
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-        logger.info("✅ Chrome GUI iniciado")
-
-        return driver
-
-    @staticmethod
     def setup_booking_cookies(driver: WebDriver):
         """Establece cookies de Booking.com para COP"""
         try:

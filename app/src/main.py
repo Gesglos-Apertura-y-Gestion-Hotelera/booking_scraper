@@ -2,6 +2,7 @@
 import sys
 import os
 import subprocess
+
 from utils.logger import logger
 
 
@@ -18,9 +19,9 @@ SCRIPTS = {
 }
 
 
-def run_script(script_name):
+def run_script(script_name, sheet_data, check_in, check_out):
     """Ejecuta script en background completamente silencioso"""
-    cmd = ['python', f"src/{script_name}"]
+    cmd = ['python', f"src/{script_name}", sheet_data, check_in, check_out]
     logger.info(f'-------- Ejecutando script {script_name} ----------')
     subprocess.run(cmd,
                    # stdout=subprocess.DEVNULL,  # Silenciar STDOUT
@@ -33,18 +34,20 @@ def main():
     args = sys.argv[1:]  # Todos los parámetros
 
     if not args:
-        # Sin parámetros → default
-        script_key = 'clientes_diario'
-    else:
-        # Primer parámetro (o todos si quieres procesarlos)
-        script_key = args[0]
+        logger.error(f'❌ Main finalizado \n ❌ falta alguno o varios de los parametros  \n  ❌ {sys.argv}')
+        sys.exit(1)
+
+    script_key = args[0]
+    sheet_data = args[1]
+    check_in = args[2]
+    check_out = args[3]
 
     # Validar y ejecutar
     if script_key not in SCRIPTS:
         sys.exit(1)
 
     script = SCRIPTS[script_key]
-    run_script(script)
+    run_script(script, sheet_data, check_in, check_out)
     logger.info('Main finalizado')
 
 if __name__ == "__main__":

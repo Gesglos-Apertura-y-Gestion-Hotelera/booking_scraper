@@ -1,9 +1,9 @@
 name: Selenium Tests
-
 on:
   push:
     branches:
       - testing/github
+      - main
   workflow_dispatch:
     inputs:
       script_key:
@@ -18,6 +18,21 @@ on:
           - competencia_prevision
           - seguimiento_diario
           - personalizado
+      sheet_data:
+        description: 'Datos en JSON (ej: [{"hotel":"Hilton","ciudad":"Bogota"}])'
+        required: true
+        default: '[{"hotel":"Hotel Ejemplo","ciudad":"Bogota"}]'
+        type: string
+      check_in:
+        description: 'Fecha check-in (YYYY-MM-DD)'
+        required: false
+        default: ''
+        type: string
+      check_out:
+        description: 'Fecha check-out (YYYY-MM-DD)'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   scrap:
@@ -28,15 +43,35 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || github.ref_name }}
 
+      - name: Set default parameters for push events
+        id: params
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "script_key=${{ inputs.script_key }}" >> $GITHUB_OUTPUT
+            echo "sheet_data=${{ inputs.sheet_data }}" >> $GITHUB_OUTPUT
+            echo "check_in=${{ inputs.check_in }}" >> $GITHUB_OUTPUT
+            echo "check_out=${{ inputs.check_out }}" >> $GITHUB_OUTPUT
+          else
+            # Valores por defecto para push en testing/github o main
+            echo "script_key=clientes_diario" >> $GITHUB_OUTPUT
+            echo 'sheet_data=[{"hotel":"Hotel Test","ciudad":"Bogota"}]' >> $GITHUB_OUTPUT
+            echo "check_in=" >> $GITHUB_OUTPUT
+            echo "check_out=" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build Docker image
         run: docker build -f dockerfile -t selenium-app .
 
       - name: Run scraper container
         run: |
-            docker run --shm-size=2gb \
-              -e BOOKING_CURRENCY=COP \
-              -e BOOKING_COUNTRY=co \
-              selenium-app ${{ inputs.script_key }}
+          docker run --shm-size=2gb \
+            -e BOOKING_CURRENCY=COP \
+            -e BOOKING_COUNTRY=co \
+            selenium-app \
+            "${{ steps.params.outputs.script_key }}" \
+            "${{ steps.params.outputs.sheet_data }}" \
+            "${{ steps.params.outputs.check_in }}" \
+            "${{ steps.params.outputs.check_out }}"
 
       - name: Show logs (si falla)
         if: failure()
