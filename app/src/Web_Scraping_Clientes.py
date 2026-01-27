@@ -1,183 +1,98 @@
-import os
-import time
-import pandas as pd
-from utils.logger import logger
+#!/usr/bin/env python3
+"""
+Web Scraping Clientes - Búsqueda Diaria (1 noche)
+"""
+import sys
+import json
 from datetime import datetime, timedelta
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from typing import List, Optional
+
+import pandas as pd
+
+from utils.logger import logger
 from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
+from core.chrome_driver import ChromeDriverFactory
+from core.scraper import BookingBaseScraper
+from core.data_models import HotelSearchData
 
-# Obtener la fecha actual y sumar un día para el check-out
-checkin = datetime.now().strftime('%Y-%m-%d')
-checkout = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyPzxk_tlVrVvQlZg0k8M0g_lIRifVqgf5EdA7EsdeMGdoHPYwNsZAiRN0Zk0U6EUbl/exec"
 
-# TODO: cambiar la direccion del archivo parametros para pasarlo dinamicamente
-# Cargar el archivo seleccionado
-nombre_archivo = "/app/database/Parametros.xlsx"
 
-# Verificar si el archivo existe
-if not os.path.exists(nombre_archivo):
-    logger.error(f"Archivo NO existe: {nombre_archivo}")
-    logger.error(f"Listando directorio database: {os.listdir('/app/database') if os.path.exists('/app/database') else 'No existe /app/database'}")
-    exit(1)
+class ClientesDiarioScraper(BookingBaseScraper):
+    """Scraper para búsqueda diaria de clientes"""
 
-try:
-    df = pd.read_excel(nombre_archivo, sheet_name='Cliente')
-    logger.info(f"✅ Archivo cargado exitosamente: {nombre_archivo} ({len(df)} filas)")
-except FileNotFoundError:
-    logger.error(f"❌ Archivo no encontrado: {nombre_archivo}")
-    exit(1)
-except Exception as e:
-    logger.error(f"❌ Error cargando Excel: {str(e)}")
-    exit(1)
+    def __init__(self, driver, hotels_data: List[HotelSearchData]):
+        super().__init__(driver)
+        self.hotels_data = hotels_data
 
-# Suponiendo que los clientes están en columnas llamadas 'Hotel' y 'Ciudad'
-clientes_ciudades = df[['Hotel', 'Ciudad']].to_dict(orient='records')
+    def run(self) -> List[dict]:
+        """Ejecuta scraping para todos los hoteles"""
+        # Fechas automáticas: hoy + 1 día
+        checkin = datetime.now().strftime('%Y-%m-%d')
+        checkout = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 
-# Configuración del driver de Selenium (Chrome)
-options = webdriver.ChromeOptions()
+        logger.info(f"📅 Check-in: {checkin} | Check-out: {checkout}")
 
-# Opciones esenciales para Docker
-options.add_argument('--headless=new')  # Modo headless moderno
-options.add_argument('--no-sandbox')  # Bypass OS security model (necesario en Docker)
-options.add_argument('--disable-dev-shm-usage')  # Superar limitaciones de /dev/shm
-options.add_argument('--disable-gpu')  # Deshabilitar GPU
-options.add_argument('--disable-extensions')
-options.add_argument('--disable-setuid-sandbox')
-options.add_argument('--window-size=1920,1080')  # Tamaño de ventana
-
-# ⭐ CONFIGURACIÓN PARA COLOMBIA Y COP ⭐
-options.add_argument('--lang=es-CO')
-options.add_experimental_option('prefs', {
-    'intl.accept_languages': 'es-CO,es,en',
-})
-options.add_argument('--disable-blink-features=AutomationControlled')
-options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36')
-
-# Configurar el servicio
-service = Service(ChromeDriverManager().install())
-
-try:
-    driver = webdriver.Chrome(service=service, options=options)
-    logger.info("✅ Chrome WebDriver iniciado correctamente")
-except Exception as e:
-    logger.error(f"❌ Error al iniciar Chrome: {str(e)}")
-    exit(1)
-
-# ⭐ ESTABLECER COOKIES DE BOOKING PARA COLOMBIA ⭐
-try:
-    driver.get('https://www.booking.com')
-    time.sleep(2)
-
-    # Establecer cookies para forzar COP y Colombia
-    driver.add_cookie({
-        'name': 'currency',
-        'value': 'COP',
-        'domain': '.booking.com'
-    })
-    driver.add_cookie({
-        'name': 'selected_currency',
-        'value': 'COP',
-        'domain': '.booking.com'
-    })
-    logger.info("✅ Cookies de moneda COP establecidas")
-except Exception as e:
-    logger.warning(f"⚠️ No se pudieron establecer cookies: {e}")
-
-# Lista para almacenar los datos de los hoteles
-hotels_list = []
-
-# Iterar sobre la lista de clientes
-for cliente_info in clientes_ciudades:
-    logger.info(f"Cliente: {cliente_info}")
-    cliente = cliente_info['Hotel']
-    ciudad = cliente_info['Ciudad']
-
-    # ⭐ CREAR URL CON PARÁMETROS DE COP Y COLOMBIA ⭐
-    url = (f'https://www.booking.com/searchresults.es.html?'
-           f'ss={cliente}'
-           f'&checkin={checkin}'
-           f'&checkout={checkout}'
-           f'&group_adults=2'
-           f'&no_rooms=1'
-           f'&group_children=0'
-           f'&selected_currency=COP'
-           f'&changed_currency=1'
-           f'&top_currency=1')
-
-    logger.info(f"URL generada: {url}")
-
-    # Abrir la página con la URL generada
-    driver.get(url)
-    time.sleep(5)  # Esperar a que se cargue la página
-
-    # Cerrar pop-up si aparece
-    try:
-        close_popup_button = driver.find_element(By.XPATH, '//button[@aria-label="Ignorar información sobre el inicio de sesión."]')
-        close_popup_button.click()  # Cierra el pop-up
-        time.sleep(2)  # Espera breve para asegurarse de que el pop-up desaparezca
-    except Exception as e:
-        logger.info(f"❌ No se pudo encontrar o cerrar el pop-up: {e}")
-
-    # Crear un diccionario para almacenar la información del hotel
-    hotel_dict = {}
-
-    try:
-        time.sleep(2)  # Pequeño tiempo de espera para asegurarse de que la página esté completamente cargada
-        
-        # Capturar precios en orden de prioridad
-        try:
-            # Precio alternativo (Desde)
-            price_alternativo_element = driver.find_element(By.CSS_SELECTOR, 'div.abf093bdfe.fc23698243')
-            hotel_dict['precio'] = price_alternativo_element.text.replace("Desde ", "").strip()  # Quita "Desde" y mantiene formato
-        except Exception as e:
+        results = []
+        for hotel_data in self.hotels_data:
             try:
-                # Precio con descuento
-                price_descuento_element = driver.find_element(By.XPATH, '//span[@data-testid="price-and-discounted-price"]')
-                hotel_dict['precio'] = price_descuento_element.text.strip()
+                result = self.search_hotel(hotel_data, checkin, checkout)
+                results.append(result.to_dict())
+                logger.info(f"✅ {result.nombre} - {result.precio}")
             except Exception as e:
-                try:
-                    # Precio base
-                    price_base_element = driver.find_element(By.CSS_SELECTOR, '[data-testid="price"]')
-                    hotel_dict['precio'] = price_base_element.text.strip()
-                except Exception as e:
-                    hotel_dict['precio'] = "0"  # Ningún precio disponible
+                logger.error(f"❌ Error con {hotel_data.hotel}: {e}")
+                results.append({
+                    'nombre': hotel_data.hotel,
+                    'precio': '0',
+                    'calificacion': 'Error',
+                    'ciudad': hotel_data.ciudad,
+                    'check_in': checkin,
+                    'check_out': checkout
+                })
 
-        # Extraer el nombre y la calificación del hotel si están disponibles
-        hotel_dict['nombre'] = driver.find_element(By.CSS_SELECTOR, '[data-testid="title"]').text
-        hotel_dict['calificacion'] = driver.find_element(By.CSS_SELECTOR, '[data-testid="review-score"]').text
+        return results
+
+
+def load_data(json_str: Optional[str] = None) -> List[HotelSearchData]:
+    """Carga datos desde JSON o Excel"""
+    if json_str:
+        data = json.loads(json_str)
+        logger.info(f"✅ JSON cargado: {len(data)} hoteles")
+        return [HotelSearchData.from_dict(item) for item in data]
+    return []
+
+
+def main():
+    """Función principal"""
+    logger.info("🚀 SCRAPING CLIENTES DIARIO")
+
+    driver = None
+    try:
+        # Cargar datos
+        json_data = sys.argv[1] if len(sys.argv) > 1 else None
+        hotels_data = load_data(json_data)
+
+        # Configurar driver
+        driver = ChromeDriverFactory.create_headless_driver()
+        ChromeDriverFactory.setup_booking_cookies(driver)
+
+        # Ejecutar scraping
+        scraper = ClientesDiarioScraper(driver, hotels_data)
+        results = scraper.run()
+
+        # Enviar resultados
+        logger.info(f"📤 Enviando {len(results)} resultados")
+        enviar_sheets_diario(results, WEBAPP_URL)
+
+        logger.info(f"✅ COMPLETADO: {len(results)} hoteles")
 
     except Exception as e:
-        logger.info(f"❌ No se pudo encontrar la información del hotel: {e}")
-        hotel_dict['nombre'] = cliente
-        hotel_dict['precio'] = "0"
-        hotel_dict['calificacion'] = "No disponible"
-    
-    # Agregar ciudad, check-in y check-out al diccionario de cada hotel
-    hotel_dict['ciudad'] = ciudad
-    hotel_dict['check_in'] = checkin
-    hotel_dict['check_out'] = checkout
-    hotels_list.append(hotel_dict)
+        logger.error(f"💥 ERROR: {e}")
+        sys.exit(1)
+    finally:
+        if driver:
+            driver.quit()
 
-# Guardar los datos de cada cliente en un archivo CSV con las columnas deseadas
-df_hotels = pd.DataFrame(hotels_list)
 
-# Crear la carpeta de guardado si no existe
-home_dir = os.path.expanduser("~")
-ruta_guardado = os.path.join(home_dir, 'Documents', 'scraping_results', 'Clientes')
-if not os.path.exists(ruta_guardado):
-    os.makedirs(ruta_guardado)
-
-# Nombre de archivo seguro
-nombre_archivo = os.path.join(ruta_guardado, f'{checkin}.csv')
-
-# Guardar solo las columnas necesarias
-df_hotels[['precio', 'nombre', 'calificacion', 'ciudad', 'check_in', 'check_out']]
-
-URL_WEBAPP="https://script.google.com/macros/s/AKfycbyPzxk_tlVrVvQlZg0k8M0g_lIRifVqgf5EdA7EsdeMGdoHPYwNsZAiRN0Zk0U6EUbl/exec"
-logger.info(hotels_list)
-enviar_sheets_diario(hotels_list, URL_WEBAPP)
-# Cerrar el navegador al finalizar
-driver.quit()
+if __name__ == "__main__":
+    main()
