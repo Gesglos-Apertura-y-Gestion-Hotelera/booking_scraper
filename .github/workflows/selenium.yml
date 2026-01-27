@@ -21,7 +21,7 @@ on:
       sheet_data:
         description: 'Datos en JSON (ej: [{"hotel":"Hilton","ciudad":"Bogota"}])'
         required: true
-        default: '[{"hotel":"Hotel Ejemplo","ciudad":"Bogota"}]'
+        default: '[{"hotel":"sheraton","ciudad":"medellin"},{"hotel":"marriot","ciudad":"Bogota"}]'
         type: string
       check_in:
         description: 'Fecha check-in (YYYY-MM-DD)'
@@ -54,7 +54,7 @@ jobs:
           else
             # Valores por defecto para push en testing/github o main
             echo "script_key=clientes_diario" >> $GITHUB_OUTPUT
-            echo 'sheet_data=[{"hotel":"Hotel Test","ciudad":"Bogota"}]' >> $GITHUB_OUTPUT
+            echo 'sheet_data=[{"hotel":"la falla","ciudad":"Bogota"}]' >> $GITHUB_OUTPUT
             echo "check_in=" >> $GITHUB_OUTPUT
             echo "check_out=" >> $GITHUB_OUTPUT
           fi
