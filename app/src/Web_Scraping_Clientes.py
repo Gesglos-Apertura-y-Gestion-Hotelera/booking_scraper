@@ -3,10 +3,12 @@
 Web Scraping Clientes Diario
 Lee JSON desde variable de entorno SHEET_DATA o argumento
 """
+
 import json
 import os
 import re
 import sys
+
 import time
 from datetime import datetime, timedelta
 
@@ -50,6 +52,7 @@ class ClientesDiarioScraper(BookingBaseScraper):
 
             url = self.build_search_url(hotel_ciudad, checkin, checkout)
             logger.info(f"URL: {url}")
+
             self.driver.get(url)
             time.sleep(5)
             self.close_popup()
@@ -95,6 +98,7 @@ def fix_json_quotes(json_str: str) -> str:
     json_str = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*):', r'\1"\2"\3:', json_str)
 
     return json_str
+
 
 
 def main():
