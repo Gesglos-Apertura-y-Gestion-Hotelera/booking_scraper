@@ -3,9 +3,12 @@
 Web Scraping Clientes Diario
 Lee JSON desde variable de entorno SHEET_DATA o argumento
 """
-import os
-import sys
+
 import json
+import os
+import re
+import sys
+
 import time
 from datetime import datetime, timedelta
 
@@ -44,7 +47,11 @@ class ClientesDiarioScraper(BookingBaseScraper):
                 logger.warning(f"⚠️ Datos incompletos: {hotel_data}")
                 continue
 
-            url = self.build_search_url(hotel, checkin, checkout)
+            hotel_ciudad = f"{hotel} - {ciudad}"
+            hotel_ciudad = re.sub(r"\s{1,10}", "+", hotel_ciudad)
+
+            url = self.build_search_url(hotel_ciudad, checkin, checkout)
+            logger.info(f"URL: {url}")
 
             self.driver.get(url)
             time.sleep(5)
@@ -76,8 +83,22 @@ class ClientesDiarioScraper(BookingBaseScraper):
 
 
 def fix_json_quotes(json_str: str) -> str:
-    """Convierte comillas simples a dobles para JSON válido"""
-    return json_str.replace("'", '"')
+    """
+    Convierte JSON malformado a JSON válido
+    Casos:
+    - Comillas simples → dobles
+    - Sin comillas en propiedades → con comillas
+    """
+
+    # 1. Reemplazar comillas simples por dobles
+    json_str = json_str.replace("'", '"')
+
+    # 2. Agregar comillas a propiedades sin comillas
+    # Patrón: {palabra: o ,palabra:
+    json_str = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*):', r'\1"\2"\3:', json_str)
+
+    return json_str
+
 
 
 def main():
