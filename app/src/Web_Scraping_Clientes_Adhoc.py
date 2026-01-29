@@ -6,8 +6,8 @@ Uso: python script.py 'clientes_diario' '2025-02-01' '2025-02-10'
 
 import time
 import pandas as pd
-
 from datetime import timedelta
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
