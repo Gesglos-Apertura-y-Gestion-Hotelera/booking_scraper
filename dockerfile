@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=es_CO.UTF-8
 ENV LC-ALL=es_CO.UTF-8
 # 1. Instalar dependencias base necesarias para descargar e instalar Chrome
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -qqy --no-install-recommends \
     wget \
     curl \
     ca-certificates \
@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 2. Descargar e instalar Google Chrome directamente
 RUN wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
     && apt-get update \
-    && apt-get install -y --no-install-recommends ./google-chrome-stable_current_amd64.deb \
+    && apt-get install -qqy --no-install-recommends ./google-chrome-stable_current_amd64.deb \
     && rm google-chrome-stable_current_amd64.deb \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -33,4 +33,3 @@ COPY app/ .
 
 # 6. Configurar punto de entrada
 ENTRYPOINT ["python", "src/main.py"]
-#, "{{script_key}}"]
