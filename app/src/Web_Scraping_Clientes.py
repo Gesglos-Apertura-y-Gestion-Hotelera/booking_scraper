@@ -5,7 +5,6 @@ Lee JSON desde variable de entorno SHEET_DATA o argumento
 """
 
 import json
-import os
 import re
 import sys
 
@@ -16,9 +15,10 @@ from core.scraper import BookingBaseScraper
 from core.chrome_driver import ChromeDriverFactory
 from utils.logger import logger
 from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
+from utils.get_sheet_data import get_sheet_data
+
 
 WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyPzxk_tlVrVvQlZg0k8M0g_lIRifVqgf5EdA7EsdeMGdoHPYwNsZAiRN0Zk0U6EUbl/exec"
-
 
 class ClientesDiarioScraper(BookingBaseScraper):
     """Scraper para búsqueda diaria de clientes"""
@@ -81,69 +81,12 @@ class ClientesDiarioScraper(BookingBaseScraper):
 
         return results
 
-
-def fix_json_quotes(json_str: str) -> str:
-    """
-    Convierte JSON malformado a JSON válido
-    Casos:
-    - Comillas simples → dobles
-    - Sin comillas en propiedades → con comillas
-    """
-
-    # 1. Reemplazar comillas simples por dobles
-    json_str = json_str.replace("'", '"')
-
-    # 2. Agregar comillas a propiedades: {palabra: → {"palabra":
-    json_str = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*):', r'\1"\2"\3:', json_str)
-
-    # 3. Agregar comillas a valores sin comillas después de :
-    # Patrón: :valor, o :valor} donde valor no empieza con " o [
-    json_str = re.sub(r':(\s*)([^"\[\],{}]+?)(\s*)([,}\]])', r':"\2"\4', json_str)
-
-    return json_str
-
-
-
-def main():
+def buscar_reservas_hoy():
     logger.info("🚀 SCRAPING CLIENTES DIARIO")
 
     driver = None
     try:
-        # Leer sheet_data de variable de entorno o argumento
-        json_str = os.getenv('SHEET_DATA', '')
-
-        if not json_str and len(sys.argv) > 1:
-            json_str = sys.argv[1]
-
-        if not json_str:
-            logger.error("❌ No se recibió SHEET_DATA")
-            logger.error("Debe enviarse como variable de entorno o primer argumento")
-            sys.exit(1)
-
-        logger.info(f"📊 JSON original (150 chars): {json_str[:150]}")
-
-        # Corregir comillas simples a dobles
-        json_str = fix_json_quotes(json_str)
-        logger.info(f"🔧 JSON corregido (150 chars): {json_str[:150]}")
-
-        try:
-            hoteles = json.loads(json_str)
-
-            if not isinstance(hoteles, list):
-                logger.error(f"❌ JSON no es lista: {type(hoteles)}")
-                sys.exit(1)
-
-            if not hoteles:
-                logger.error("❌ Lista de hoteles vacía")
-                sys.exit(1)
-
-            logger.info(f"✅ {len(hoteles)} hoteles parseados")
-            logger.info(f"Primer hotel: {hoteles[0]}")
-
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ Error parseando JSON: {e}")
-            logger.error(f"JSON recibido: {json_str}")
-            sys.exit(1)
+        hoteles = get_sheet_data()
 
         # Ejecutar scraping
         driver = ChromeDriverFactory.create_headless_driver()
@@ -169,4 +112,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    buscar_reservas_hoy()

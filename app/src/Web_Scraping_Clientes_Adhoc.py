@@ -1,137 +1,115 @@
 #!/usr/bin/env python3
 """
 Web Scraping Competencia Adhoc
-Uso: python script.py '[{...}]' '2025-02-01' '2025-02-10'
+Uso: python script.py 'clientes_diario' '2025-02-01' '2025-02-10'
 """
-import sys
-import json
+import os
 import time
-from datetime import datetime, timedelta
-from typing import List
+import pandas as pd
 
-from core.scraper import BookingBaseScraper
-from core.chrome_driver import ChromeDriverFactory
+from datetime import datetime, timedelta
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
+from booking_scraper.app.src.utils.enviar_sheets_clientes_diario import enviar_sheets_diario
+from utils.get_dates import get_dates
+from utils.get_sheet_data import get_sheet_data
 from utils.logger import logger
-from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
+
 
 WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyPzxk_tlVrVvQlZg0k8M0g_lIRifVqgf5EdA7EsdeMGdoHPYwNsZAiRN0Zk0U6EUbl/exec"
 
 
-class CompetenciaAdhocScraper(BookingBaseScraper):
-    """Scraper adhoc para competencia con rango de fechas"""
+# Función para iniciar la búsqueda diaria
+def iniciar_busqueda():
 
-    def __init__(self, driver, competidores: List[dict], fecha_inicio: datetime, fecha_fin: datetime):
-        super().__init__(driver)
-        self.competidores = competidores
-        self.fecha_inicio = fecha_inicio
-        self.fecha_fin = fecha_fin
+    # Convertir las fechas ingresadas a objetos datetime
+    try:
+        check_in, check_out = get_dates()
+        clientes_ciudades = get_sheet_data()
 
-    def run(self) -> List[dict]:
-        """Ejecuta scraping para rango de fechas"""
-        results = []
-        fecha = self.fecha_inicio
+    except ValueError:
+        logger.error("las fechas no pudieron ser parseadas")
+        return
 
-        while fecha < self.fecha_fin:
-            siguiente = fecha + timedelta(days=1)
-            checkin = fecha.strftime('%Y-%m-%d')
-            checkout = siguiente.strftime('%Y-%m-%d')
 
-            logger.info(f"📅 {checkin}")
+    # Configuración del driver de Selenium (Chrome)
+    options = webdriver.ChromeOptions()
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-            for comp in self.competidores:
-                # Validar que sea dict
-                if not isinstance(comp, dict):
-                    logger.error(f"❌ Elemento no es dict: {type(comp)} - {comp}")
-                    continue
+    # Lista para almacenar los datos de los hoteles
+    hotels_list = []
 
-                competidor = comp.get('competidor') or comp.get('Competidor') or comp.get('hotel') or comp.get(
-                    'Hotel') or ''
-                ciudad = comp.get('ciudad') or comp.get('Ciudad') or ''
+    # Iterar sobre cada día en el rango de fechas
+    fecha_actual = check_in
+    while fecha_actual < check_out:
+        siguiente_dia = fecha_actual + timedelta(days=1)
+        checkin_str = fecha_actual.strftime('%Y-%m-%d')
+        checkout_str = siguiente_dia.strftime('%Y-%m-%d')
 
-                if not competidor or not ciudad:
-                    logger.warning(f"⚠️ Datos incompletos: {comp}")
-                    continue
+        # Iterar sobre cada cliente y realizar la búsqueda diaria
+        for cliente_info in clientes_ciudades:
+            cliente = cliente_info['Hotel']
+            ciudad = cliente_info['Ciudad']
+            url = f'https://www.booking.com/searchresults.es.html?ss={cliente}&checkin={checkin_str}&checkout={checkout_str}&group_adults=2&no_rooms=1&group_children=0'
 
-                # Buscar (competidor + ciudad)
-                search_term = f"{competidor}%20{ciudad}"
-                url = self.build_search_url(search_term, checkin, checkout)
+            driver.get(url)
+            time.sleep(5)
 
-                self.driver.get(url)
-                time.sleep(5)
-                self.close_popup()
+            # Cerrar el pop-up, si aparece
+            try:
+                close_popup_button = driver.find_element(By.XPATH,
+                                                         '//button[@aria-label="Ignorar información sobre el inicio de sesión."]')
+                close_popup_button.click()
                 time.sleep(2)
+            except Exception:
+                pass  # Ignorar si no aparece el pop-up
 
-                # Extraer
+            # Crear un diccionario para almacenar la información del hotel
+            hotel_dict = {}
+            try:
+                # Capturar precios en orden de prioridad
                 try:
-                    nombre = self.extract_name()
-                    precio = self.extract_price()
-                    calificacion = self.extract_rating()
-                except Exception as e:
-                    logger.warning(f"⚠️ {competidor}: {e}")
-                    nombre = competidor
-                    precio = "0"
-                    calificacion = "0"
+                    # Precio alternativo (Desde)
+                    price_alternativo_element = driver.find_element(By.CSS_SELECTOR, 'div.abf093bdfe.fc23698243')
+                    hotel_dict['precio'] = price_alternativo_element.text.replace("Desde ", "").strip()
+                except Exception:
+                    try:
+                        # Precio con descuento
+                        price_descuento_element = driver.find_element(By.XPATH,
+                                                                      '//span[@data-testid="price-and-discounted-price"]')
+                        hotel_dict['precio'] = price_descuento_element.text.strip()
+                    except Exception:
+                        try:
+                            # Precio base
+                            price_base_element = driver.find_element(By.CSS_SELECTOR, '[data-testid="price"]')
+                            hotel_dict['precio'] = price_base_element.text.strip()
+                        except Exception:
+                            hotel_dict['precio'] = "0"  # Ningún precio disponible
 
-                results.append({
-                    'nombre': nombre,
-                    'precio': precio,
-                    'calificacion': calificacion,
-                    'competidor': competidor,
-                    'ciudad': ciudad,
-                    'check_in': checkin,
-                    'check_out': checkout
-                })
+                # Extraer el nombre y la calificación del hotel si están disponibles
+                hotel_dict['nombre'] = driver.find_element(By.CSS_SELECTOR, '[data-testid="title"]').text
+                hotel_dict['calificacion'] = driver.find_element(By.CSS_SELECTOR, '[data-testid="review-score"]').text
+            except Exception as e:
+                hotel_dict['nombre'] = cliente
+                hotel_dict['precio'] = "No disponible"
+                hotel_dict['calificacion'] = "No disponible"
 
-                logger.info(f"✅ {nombre} - {precio}")
+            hotel_dict['ciudad'] = ciudad
+            hotel_dict['check_in'] = checkin_str
+            hotel_dict['check_out'] = checkout_str
+            hotels_list.append(hotel_dict)
 
-            fecha = siguiente
+        # Avanzar al siguiente día en el rango
+        fecha_actual = siguiente_dia
 
-        return results
+    enviar_sheets_diario(hotels_list, WEBAPP_URL)
 
-def main():
-    if len(sys.argv) < 4:
-        logger.error("❌ Uso: script.py '[{...}]' 'YYYY-MM-DD' 'YYYY-MM-DD'")
-        sys.exit(1)
+    # Cerrar el navegador al finalizar
+    driver.quit()
 
-    try:
-        parametros_json_str = sys.argv[1]
-        logger.info(f"📊 JSON recibido (primeros 100 chars): {parametros_json_str[:100]}")
-
-        competidores = json.loads(parametros_json_str)
-
-        if not isinstance(competidores, list):
-            logger.error(f"❌ JSON no es lista: {type(competidores)}")
-            sys.exit(1)
-
-        logger.info(f"✅ JSON parseado: {len(competidores)} competidores")
-        logger.info(f"Primer elemento: {competidores[0] if competidores else 'vacío'}")
-
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ Error parseando JSON: {e}")
-        logger.error(f"JSON recibido: {parametros_json_str}")
-        sys.exit(1)
-
-    fecha_inicio = datetime.strptime(sys.argv[2], '%Y-%m-%d')
-    fecha_fin = datetime.strptime(sys.argv[3], '%Y-%m-%d')
-
-    logger.info(f"📅 {fecha_inicio.date()} → {fecha_fin.date()}")
-
-    # Ejecutar
-    driver = ChromeDriverFactory.create_headless_driver()
-    ChromeDriverFactory.setup_booking_cookies(driver)
-
-    try:
-        scraper = CompetenciaAdhocScraper(driver, competidores, fecha_inicio, fecha_fin)
-        results = scraper.run()
-
-        # Enviar a Sheets
-        logger.info(f"📤 Enviando {len(results)} resultados")
-        # TODO: configurar si este es el lugar correcto para enviar la informacion del scraper o si debe ir a otro archivo
-        enviar_sheets_diario(results, WEBAPP_URL)
-        logger.info("✅ COMPLETADO")
-
-    finally:
-        driver.quit()
 
 if __name__ == "__main__":
-    main()
+    iniciar_busqueda()
