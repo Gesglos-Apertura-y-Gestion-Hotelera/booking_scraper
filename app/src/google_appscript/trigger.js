@@ -1,21 +1,18 @@
-function doPost(e) {
+function doGet(e) {
   try {
-    Logger.log("=== INICIO ===");
-    
-    var scriptKey = "clientes_diario";
-    var checkIn = "";
-    var checkOut = "";
-    
-    if (e && e.parameter) {
-      scriptKey = e.parameter.script_key || scriptKey;
-      checkIn = e.parameter.check_in || checkIn;
-      checkOut = e.parameter.check_out || checkOut;
-    }
-    
-    Logger.log("script_key: " + scriptKey);
-    Logger.log("check_in: " + checkIn);
-    Logger.log("check_out: " + checkOut);
-    
+    console.log("=== INICIO DE PETICIÓN ===");
+  
+  // Capturamos los datos
+  var scriptKey = (e && e.parameter && e.parameter.script_key) ? e.parameter.script_key : "no_key";
+  var checkIn   = (e && e.parameter && e.parameter.check_in)   ? e.parameter.check_in   : "no_checkin";
+  var checkOut  = (e && e.parameter && e.parameter.check_out)  ? e.parameter.check_out  : "no_checkout";
+  
+  // Estos logs aparecerán en la pestaña "Ejecuciones" de Apps Script
+  console.log("Parámetros recibidos:");
+  console.log("- script_key: " + scriptKey);
+  console.log("- check_in: " + checkIn);
+  console.log("- check_out: " + checkOut);
+  
     // Leer datos del sheet
     var spreadsheetId = "1ZsS-tWfgn3Zzl4DNWX9u1UagRfC4ZwydeZPMymVfOGY";
     var sheetName = "Cliente";
@@ -46,7 +43,7 @@ function doPost(e) {
     
     // Disparar GitHub Actions
     var url = 'https://api.github.com/repos/Gesglos-Apertura-y-Gestion-Hotelera/booking_scraper/actions/workflows/selenium.yml/dispatches';
-    var token = "aqui va el token real";
+    var token = "AQUI DEBERÍA IR EL TOKEN";
     
     var payload = {
       "ref": "main", 

@@ -1,51 +1,136 @@
-<button id="btnEjecutar" onclick="enviarAccion()" style="padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-family: sans-serif;">
-  🚀 Ejecutar Script
-</button>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
 
-<p id="mensajeEstado" style="font-family: sans-serif; margin-top: 10px; color: #555;"></p>
-
-<script>
-  function enviarAccion() {
-    const btn = document.getElementById("btnEjecutar");
-    const estado = document.getElementById("mensajeEstado");
-
-    // URL de tu Apps Script
-    const urlScript = "https://script.google.com/macros/s/AKfycbx2pQBqAXWQfaUU7p2cEi0hGyiFPt6dz7uxUt6OSV-a5kPjG1dTu6F2i4iadAD7t--xww/exec";
-
-    // Parámetro que quieres enviar
-    const scriptKey = "clientes_diario";
-
-    // Desactivar botón y avisar al usuario
-    btn.disabled = true;
-    btn.style.backgroundColor = "#ccc";
-    estado.innerText = "Enviando orden a Google...";
-
-    // TRUCO: Usar un objeto Image para saltar el bloqueo de CORS
-    // Esto hace que el navegador "pida la imagen" y ejecute tu doGet
-    const img = new Image();
-
-    img.onload = function() {
-      // Este bloque se ejecuta si Google responde con una imagen (poco probable)
-      finalizar();
-    };
-
-    img.onerror = function() {
-      // Aunque falle la "carga de imagen" (porque Google devuelve texto),
-      // la petición LLEGA al script y se ejecuta.
-      finalizar();
-    };
-
-    // Lanzamos la petición agregando un timestamp para evitar el caché
-    img.src = urlScript + "?key=" + scriptKey + "&t=" + new Date().getTime();
-    
+<style>
+  .contenedor-botones { 
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px; font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  
+  .btn-custom { 
+    padding: 12px 28px; border-radius: 50px; background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 210px; box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.2); transition: all 0.3s ease;
   }
 
-  function finalizar() {
-    const btn = document.getElementById("btnEjecutar");
-    const estado = document.getElementById("mensajeEstado");
+  .btn-custom:hover { background-color: #0056b3; transform: translateY(-3px); }
+  .btn-custom:disabled { background-color: #ccc !important; cursor: not-allowed; transform: none !important; }
 
-    estado.innerText = "✅ Señal enviada. Revisa GitHub Actions en unos segundos.";
-    btn.disabled = false;
-    btn.style.backgroundColor = "#007bff";
+  #mensajeEstado { font-family: sans-serif; margin-top: 20px; color: #555; text-align: center; font-weight: 500; min-height: 1.2em; }
+
+  /* Contenedor del calendario y confirmación */
+  #contenedor-calendario {
+    display: none; 
+    flex-direction: column; 
+    align-items: center; 
+    margin-top: 20px;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 15px;
+  }
+
+  #btn-confirmar-fechas {
+    display: none;
+    margin-top: 15px;
+    background-color: #28a745;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 50px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+    box-shadow: 0px 4px 10px rgba(40, 167, 69, 0.3);
+  }
+</style>
+
+<div class="contenedor-botones">
+  <button class="btn-custom" onclick="enviarAccion(this, 'clientes_diario')">🚀 Cliente Diario</button>
+  <button class="btn-custom" onclick="abrirCalendario(this)">📅 Clientes Previsión</button>
+  <button class="btn-custom" onclick="enviarAccion(this, 'competencia_diario')">📊 Competencia Diario</button>
+  <button class="btn-custom" onclick="enviarAccion(this, 'competencia_prevision')">📉 Competencia Previsión</button>
+  <button class="btn-custom" onclick="enviarAccion(this, 'seguimiento_diario')">🔍 Seguimiento Diario</button>
+  <button class="btn-custom" onclick="enviarAccion(this, 'personalizado')">⚙️ Personalizado</button>
+</div>
+
+<p id="mensajeEstado"></p>
+
+<div id="contenedor-calendario">
+  <div id="datepicker-inline"></div> <button id="btn-confirmar-fechas" onclick="confirmarYEnviar()">✅ Confirmar y Enviar Fechas</button>
+  <button onclick="cerrarCalendario()" style="margin-top:10px; background:none; border:none; color:red; cursor:pointer; text-decoration:underline;">Cancelar</button>
+</div>
+
+<script>
+  let botonActivo = null;
+  let rangoSeleccionado = { inicio: null, fin: null };
+  let fp;
+
+  // Inicialización segura del calendario
+  window.onload = function() {
+    fp = flatpickr("#datepicker-inline", {
+      locale: "es",
+      mode: "range",
+      dateFormat: "Y-m-d",
+      inline: true,
+      onChange: function(selectedDates, dateStr, instance) {
+        const btnConfirmar = document.getElementById('btn-confirmar-fechas');
+        if (selectedDates.length === 2) {
+          rangoSeleccionado.inicio = instance.formatDate(selectedDates[0], "Y-m-d");
+          rangoSeleccionado.fin = instance.formatDate(selectedDates[1], "Y-m-d");
+          btnConfirmar.style.display = 'block';
+        } else {
+          btnConfirmar.style.display = 'none';
+        }
+      }
+    });
+  };
+
+  function abrirCalendario(btn) {
+    botonActivo = btn;
+    if (!btn.getAttribute('data-original-html')) {
+        btn.setAttribute('data-original-html', btn.innerHTML);
+    }
+    document.getElementById('contenedor-calendario').style.display = 'flex';
+    document.getElementById('contenedor-calendario').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function cerrarCalendario() {
+    document.getElementById('contenedor-calendario').style.display = 'none';
+    fp.clear();
+  }
+
+  function confirmarYEnviar() {
+    if (rangoSeleccionado.inicio && rangoSeleccionado.fin) {
+      document.getElementById('contenedor-calendario').style.display = 'none';
+      ejecutarProceso(botonActivo, 'clientes_prevision', rangoSeleccionado.inicio, rangoSeleccionado.fin);
+      fp.clear();
+    }
+  }
+
+  function enviarAccion(btn, scriptKey) {
+    ejecutarProceso(btn, scriptKey);
+  }
+
+  function ejecutarProceso(btn, scriptKey, check_in = null, check_out = null) {
+    const estado = document.getElementById("mensajeEstado");
+    const urlScript = "https://script.google.com/macros/s/AKfycbxllwXdV7iOUKqwvDNqPFByQ0MIgngQlx4OpE-TkDAVzoPHOvVH0CVp2UXVxGQKMZg7eQ/exec";                       
+
+    btn.disabled = true;
+    const contenidoOriginal = btn.getAttribute('data-original-html') || btn.innerHTML;
+    btn.innerHTML = "⏳ Enviando...";
+    estado.innerText = "Enviando " + scriptKey + "...";
+
+    let urlFinal = urlScript + "?script_key=" + scriptKey + "&t=" + new Date().getTime();
+    if (check_in && check_out) {
+      urlFinal += "&check_in=" + encodeURIComponent(check_in) + "&check_out=" + encodeURIComponent(check_out);
+    }
+
+    const img = new Image();
+    img.onload = img.onerror = function() {
+      estado.innerText = "✅ Señal enviada: " + scriptKey;
+      estado.style.color = "#28a745";
+      btn.disabled = false;
+      btn.innerHTML = contenidoOriginal;
+      setTimeout(() => { estado.innerText = ""; }, 5000);
+    };
+    img.src = urlFinal;
   }
 </script>
