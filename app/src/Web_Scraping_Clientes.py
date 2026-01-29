@@ -4,7 +4,6 @@ Web Scraping Clientes Diario
 Lee JSON desde variable de entorno SHEET_DATA o argumento
 """
 
-import json
 import re
 import sys
 

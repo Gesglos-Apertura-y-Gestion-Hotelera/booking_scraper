@@ -3,17 +3,17 @@
 Web Scraping Competencia Adhoc
 Uso: python script.py 'clientes_diario' '2025-02-01' '2025-02-10'
 """
-import os
+
 import time
 import pandas as pd
+from datetime import timedelta
 
-from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-from booking_scraper.app.src.utils.enviar_sheets_clientes_diario import enviar_sheets_diario
+from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
 from utils.get_dates import get_dates
 from utils.get_sheet_data import get_sheet_data
 from utils.logger import logger
