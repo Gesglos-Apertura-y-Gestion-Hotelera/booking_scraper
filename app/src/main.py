@@ -53,17 +53,15 @@ def main():
 
     # Leer sheet_data de variable de entorno (prioritario) o argumento
     sheet_data = os.getenv('SHEET_DATA', '')
-    if not sheet_data and len(args) > 1:
-        sheet_data = args[1]
 
     # Leer check_in y check_out de variables de entorno o argumentos
     check_in = os.getenv('CHECK_IN', '')
     if not check_in:
-        check_in = args[1] if len(args) > 1 and not sheet_data else (args[2] if len(args) > 2 else '')
+        check_in = args[1]
 
     check_out = os.getenv('CHECK_OUT', '')
     if not check_out:
-        check_out = args[2] if len(args) > 2 and not sheet_data else (args[3] if len(args) > 3 else '')
+        check_out = args[2]
 
     if script_key not in SCRIPTS:
         logger.error(f'❌ Script inválido: {script_key}')
