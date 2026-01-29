@@ -33,4 +33,3 @@ COPY app/ .
 
 # 6. Configurar punto de entrada
 ENTRYPOINT ["python", "src/main.py"]
-#, "{{script_key}}"]
