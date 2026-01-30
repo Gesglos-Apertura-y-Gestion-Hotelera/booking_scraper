@@ -10,7 +10,7 @@ def get_sheet_data()->list[str]:
     json_str = os.getenv('SHEET_DATA', '')
 
     if not json_str and len(sys.argv) > 1:
-        json_str = sys.argv[1]
+        json_str = sys.argv[2]
 
     if not json_str:
         logger.error("❌ No se recibió SHEET_DATA")
