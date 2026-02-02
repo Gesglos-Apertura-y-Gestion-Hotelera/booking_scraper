@@ -1,107 +1,148 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
 
 <style>
+  /* 2. ESTILOS (Identidad Gesglos) */
+  body, .contenedor-botones, #contenedor-calendario, #mensajeEstado, .flatpickr-calendar {
+    font-family: 'Montserrat', sans-serif !important;
+  }
+
   .contenedor-botones { 
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px; font-family: 'Segoe UI', Arial, sans-serif;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; padding: 20px;
   }
   
   .btn-custom { 
-    padding: 12px 28px; border-radius: 50px; background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 210px; box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.2); transition: all 0.3s ease;
+    padding: 14px 28px; border-radius: 50px; background-color: #007bff; color: white; border: none; cursor: pointer; 
+    font-weight: 600; font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; display: flex; 
+    align-items: center; justify-content: center; gap: 10px; min-width: 230px; 
+    box-shadow: 0px 6px 12px rgba(0, 123, 255, 0.2); transition: all 0.3s ease;
   }
 
-  .btn-custom:hover { background-color: #0056b3; transform: translateY(-3px); }
-  .btn-custom:disabled { background-color: #ccc !important; cursor: not-allowed; transform: none !important; }
+  .btn-custom:hover { background-color: #0056b3; transform: translateY(-2px); box-shadow: 0px 8px 18px rgba(0, 123, 255, 0.3); }
+  .btn-custom:disabled { background-color: #ccc !important; box-shadow: none !important; cursor: not-allowed; }
 
-  #mensajeEstado { font-family: sans-serif; margin-top: 20px; color: #555; text-align: center; font-weight: 500; min-height: 1.2em; }
+  #mensajeEstado { margin-top: 20px; color: #444; text-align: center; font-weight: 600; font-size: 14px; min-height: 1.5em; padding: 0 10px; }
 
-  /* Contenedor del calendario y confirmación */
+  /* 3. PANEL DINÁMICO */
   #contenedor-calendario {
-    display: none; 
-    flex-direction: column; 
-    align-items: center; 
-    margin-top: 20px;
-    padding: 20px;
-    background: #f9f9f9;
-    border-radius: 15px;
+    display: none; flex-direction: column; align-items: center; margin: 20px auto; padding: 25px; 
+    background: #04254e; border-radius: 20px; max-width: 350px; box-shadow: 0px 10px 30px rgba(4, 37, 78, 0.2);
+  }
+
+  #input-ciudad {
+    display: none; width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: none; 
+    font-family: 'Montserrat', sans-serif; font-size: 14px; text-align: center; box-sizing: border-box; outline: none;
   }
 
   #btn-confirmar-fechas {
-    display: none;
-    margin-top: 15px;
-    background-color: #28a745;
-    color: white;
-    padding: 12px 25px;
-    border-radius: 50px;
-    border: none;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 14px;
-    box-shadow: 0px 4px 10px rgba(40, 167, 69, 0.3);
+    display: none; margin-top: 20px; background-color: #28a745; color: white; padding: 14px 25px; 
+    border-radius: 50px; border: none; font-weight: 700; text-transform: uppercase; font-size: 12px; 
+    letter-spacing: 1px; cursor: pointer; box-shadow: 0px 4px 10px rgba(40, 167, 69, 0.3);
   }
+
+  .btn-cancelar { margin-top: 15px; background: none; border: none; color: #ff9999; cursor: pointer; text-decoration: underline; font-size: 12px; }
 </style>
 
 <div class="contenedor-botones">
   <button class="btn-custom" onclick="enviarAccion(this, 'clientes_diario')">🚀 Cliente Diario</button>
-  <button class="btn-custom" onclick="abrirCalendario(this)">📅 Clientes Previsión</button>
+  <button class="btn-custom" onclick="abrirCalendario(this, 'clientes_prevision')">📅 Clientes Previsión</button>
   <button class="btn-custom" onclick="enviarAccion(this, 'competencia_diario')">📊 Competencia Diario</button>
-  <button class="btn-custom" onclick="enviarAccion(this, 'competencia_prevision')">📉 Competencia Previsión</button>
+  <button class="btn-custom" onclick="abrirCalendario(this, 'competencia_prevision')">📉 Competencia Previsión</button>
   <button class="btn-custom" onclick="enviarAccion(this, 'seguimiento_diario')">🔍 Seguimiento Diario</button>
-  <button class="btn-custom" onclick="enviarAccion(this, 'personalizado')">⚙️ Personalizado</button>
+  <button class="btn-custom" onclick="abrirCalendario(this, 'personalizado')">⚙️ Personalizado</button>
 </div>
 
 <p id="mensajeEstado"></p>
 
 <div id="contenedor-calendario">
-  <div id="datepicker-inline"></div> <button id="btn-confirmar-fechas" onclick="confirmarYEnviar()">✅ Confirmar y Enviar Fechas</button>
-  <button onclick="cerrarCalendario()" style="margin-top:10px; background:none; border:none; color:red; cursor:pointer; text-decoration:underline;">Cancelar</button>
+  <input type="text" id="input-ciudad" placeholder="Escribe la ciudad...">
+  <div id="datepicker-inline"></div> 
+  <button id="btn-confirmar-fechas" onclick="confirmarYEnviar()">✅ Confirmar y Enviar</button>
+  <button class="btn-cancelar" onclick="cerrarCalendario()">Cancelar</button>
 </div>
 
 <script>
+  /* 5. LÓGICA DE CONTROL UNIFICADA */
   let botonActivo = null;
+  let scriptKeyActiva = null;
   let rangoSeleccionado = { inicio: null, fin: null };
   let fp;
 
-  // Inicialización segura del calendario
   window.onload = function() {
     fp = flatpickr("#datepicker-inline", {
-      locale: "es",
-      mode: "range",
-      dateFormat: "Y-m-d",
-      inline: true,
+      locale: "es", mode: "range", dateFormat: "Y-m-d", inline: true, minDate: "today",
       onChange: function(selectedDates, dateStr, instance) {
-        const btnConfirmar = document.getElementById('btn-confirmar-fechas');
+        const estado = document.getElementById("mensajeEstado");
+        
         if (selectedDates.length === 2) {
-          rangoSeleccionado.inicio = instance.formatDate(selectedDates[0], "Y-m-d");
-          rangoSeleccionado.fin = instance.formatDate(selectedDates[1], "Y-m-d");
-          btnConfirmar.style.display = 'block';
+          // VALIDACIÓN: No permitir misma fecha de entrada y salida
+          if (selectedDates[0].getTime() === selectedDates[1].getTime()) {
+            estado.innerText = "⚠️ El Check-out debe ser posterior al Check-in";
+            estado.style.color = "#dc3545";
+            rangoSeleccionado.inicio = null;
+            rangoSeleccionado.fin = null;
+          } else {
+            estado.innerText = ""; 
+            rangoSeleccionado.inicio = instance.formatDate(selectedDates[0], "Y-m-d");
+            rangoSeleccionado.fin = instance.formatDate(selectedDates[1], "Y-m-d");
+          }
         } else {
-          btnConfirmar.style.display = 'none';
+          rangoSeleccionado.inicio = null; rangoSeleccionado.fin = null;
         }
+        validarVisibilidadBoton();
       }
     });
+
+    document.getElementById('input-ciudad').addEventListener('input', validarVisibilidadBoton);
   };
 
-  function abrirCalendario(btn) {
-    botonActivo = btn;
-    if (!btn.getAttribute('data-original-html')) {
-        btn.setAttribute('data-original-html', btn.innerHTML);
+  function validarVisibilidadBoton() {
+    const btnConfirmar = document.getElementById('btn-confirmar-fechas');
+    const ciudad = document.getElementById('input-ciudad').value.trim();
+    const fechasListas = (rangoSeleccionado.inicio && rangoSeleccionado.fin);
+
+    if (scriptKeyActiva === 'personalizado') {
+      // Requiere Ciudad + Rango de fechas válido
+      btnConfirmar.style.display = (fechasListas && ciudad !== "") ? 'block' : 'none';
+    } else {
+      // Requiere solo Rango de fechas válido
+      btnConfirmar.style.display = fechasListas ? 'block' : 'none';
     }
+  }
+
+  function abrirCalendario(btn, scriptKey) {
+    botonActivo = btn;
+    scriptKeyActiva = scriptKey;
+    const inputCiudad = document.getElementById('input-ciudad');
+    
+    document.getElementById('mensajeEstado').innerText = "";
+    document.getElementById('btn-confirmar-fechas').style.display = 'none';
+    inputCiudad.style.display = (scriptKey === 'personalizado') ? 'block' : 'none';
+    inputCiudad.value = "";
+    if(fp) fp.clear();
+
+    if (!btn.getAttribute('data-original-html')) btn.setAttribute('data-original-html', btn.innerHTML);
+    
     document.getElementById('contenedor-calendario').style.display = 'flex';
     document.getElementById('contenedor-calendario').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   function cerrarCalendario() {
     document.getElementById('contenedor-calendario').style.display = 'none';
-    fp.clear();
+    document.getElementById('mensajeEstado').innerText = "";
+    scriptKeyActiva = null;
+    if(fp) fp.clear();
   }
 
   function confirmarYEnviar() {
-    if (rangoSeleccionado.inicio && rangoSeleccionado.fin) {
+    const ciudad = document.getElementById('input-ciudad').value;
+    if (rangoSeleccionado.inicio && rangoSeleccionado.fin && scriptKeyActiva) {
       document.getElementById('contenedor-calendario').style.display = 'none';
-      ejecutarProceso(botonActivo, 'clientes_prevision', rangoSeleccionado.inicio, rangoSeleccionado.fin);
+      ejecutarProceso(botonActivo, scriptKeyActiva, rangoSeleccionado.inicio, rangoSeleccionado.fin, ciudad);
       fp.clear();
+      scriptKeyActiva = null;
     }
   }
 
@@ -109,27 +150,27 @@
     ejecutarProceso(btn, scriptKey);
   }
 
-  function ejecutarProceso(btn, scriptKey, check_in = null, check_out = null) {
+  function ejecutarProceso(btn, scriptKey, check_in = null, check_out = null, ciudad = null) {
     const estado = document.getElementById("mensajeEstado");
-    const urlScript = "https://script.google.com/macros/s/AKfycbxllwXdV7iOUKqwvDNqPFByQ0MIgngQlx4OpE-TkDAVzoPHOvVH0CVp2UXVxGQKMZg7eQ/exec";                       
+    const urlScript = "https://script.google.com/macros/s/AKfycbwdyQjznTSBY8V8x1h9lls_aEvFeIa0_mFx1RGF5rBuOdxP238WmtzibMGywL1_TKePOA/exec";                       
 
     btn.disabled = true;
     const contenidoOriginal = btn.getAttribute('data-original-html') || btn.innerHTML;
     btn.innerHTML = "⏳ Enviando...";
-    estado.innerText = "Enviando " + scriptKey + "...";
+    estado.innerText = "Procesando " + scriptKey.replace('_', ' ') + "...";
+    estado.style.color = "#444";
 
     let urlFinal = urlScript + "?script_key=" + scriptKey + "&t=" + new Date().getTime();
-    if (check_in && check_out) {
-      urlFinal += "&check_in=" + encodeURIComponent(check_in) + "&check_out=" + encodeURIComponent(check_out);
-    }
+    if (check_in && check_out) urlFinal += "&check_in=" + encodeURIComponent(check_in) + "&check_out=" + encodeURIComponent(check_out);
+    if (ciudad && scriptKey === 'personalizado') urlFinal += "&ciudad=" + encodeURIComponent(ciudad);
 
     const img = new Image();
     img.onload = img.onerror = function() {
-      estado.innerText = "✅ Señal enviada: " + scriptKey;
+      estado.innerText = "✅ Señal enviada con éxito";
       estado.style.color = "#28a745";
       btn.disabled = false;
       btn.innerHTML = contenidoOriginal;
-      setTimeout(() => { estado.innerText = ""; }, 5000);
+      setTimeout(() => { if(estado.innerText.includes("éxito")) estado.innerText = ""; }, 5000);
     };
     img.src = urlFinal;
   }

@@ -1,4 +1,4 @@
-function doGet(e) {
+function doPost(e) {
   try {
     console.log("=== INICIO DE PETICIÓN ===");
   
@@ -15,8 +15,30 @@ function doGet(e) {
   
     // Leer datos del sheet
     var spreadsheetId = "1ZsS-tWfgn3Zzl4DNWX9u1UagRfC4ZwydeZPMymVfOGY";
-    var sheetName = "Cliente";
+    //var sheetName = "Cliente";
     
+    var sheetName = "";
+
+  switch (scriptKey) {
+    case "clientes_diario":
+    case "clientes_prevision":
+      sheetName = "Cliente";
+      break;
+
+    case "competencia_diario":
+    case "competencia_prevision":
+      sheetName = "Competencia";
+      break;
+
+    case "seguimiento_diario":
+    case "personalizado":
+      sheetName = "Ciudad";
+      break;
+    
+    default:
+      sheetName = "Cliente";
+  }
+
     var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     var sheet = spreadsheet.getSheetByName(sheetName);
     
@@ -43,7 +65,7 @@ function doGet(e) {
     
     // Disparar GitHub Actions
     var url = 'https://api.github.com/repos/Gesglos-Apertura-y-Gestion-Hotelera/booking_scraper/actions/workflows/selenium.yml/dispatches';
-    var token = "AQUI DEBERÍA IR EL TOKEN";
+    var token = aqui va un token;
     
     var payload = {
       "ref": "main", 
@@ -92,7 +114,7 @@ function doGet(e) {
 // Función alternativa para ejecutar manualmente desde el editor
 function testReadSheet() {
   var spreadsheetId = "1ZsS-tWfgn3Zzl4DNWX9u1UagRfC4ZwydeZPMymVfOGY";
-  var sheetName = "Cliente";
+  var sheetName = "Competencia";
   
   var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
   var sheet = spreadsheet.getSheetByName(sheetName);
@@ -102,6 +124,7 @@ function testReadSheet() {
   
   var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   
+  if (sheetName == "Cliente"){
   var records = data.map(function(row) {
     return {
       "ciudad": row[0],
@@ -113,6 +136,18 @@ function testReadSheet() {
       "registro": row[6]
     };
   });
+  };
+  if (sheetName == "Competencia"){
+  var records = data.map(function(row) {
+    return {
+      "ciudad": row[2],
+      "hotel": row[0],
+      "competidor": row[1],
+      "buscar": row[3]      
+    };
+  });
+  };
+
   
   Logger.log(JSON.stringify(records, null, 2));
   return records;
