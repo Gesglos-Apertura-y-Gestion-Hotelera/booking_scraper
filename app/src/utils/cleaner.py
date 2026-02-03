@@ -1,12 +1,5 @@
 import re
 
-
-
-
-import requests
-import json
-import re
-
 from .logger import logger
 
 
@@ -15,7 +8,7 @@ class DataCleaner:
 
     @staticmethod
     def limpiar_calificacion(calif_raw):
-        logger.info(f"\n\ncalificacion  -{calif_raw}-")
+        logger.info(f"calificacion  -{calif_raw}-")
         if not calif_raw or '\n' not in str(calif_raw):
             return ["", "", ""]
         partes = calif_raw.split('\n')
@@ -39,10 +32,19 @@ class DataCleaner:
 
         return ["", ""]
 
-    def clean_rating_details(self, rating_details: str):
-        rating_details = re.sub(r"Puntuación:\s{1,3}No disponible\s{1,3}", "", rating_details)
-        rating_details = re.sub(r"\d{1,10}\s{1,10}comentarios", "", rating_details)
-        return rating_details
+    def quitar_tildes(self, texto):
+        # Diccionario con las equivalencias
+        mapeo = {
+            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+            'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U',
+            'ü': 'u', 'Ü': 'U'
+        }
+
+        # El regex busca cualquier vocal tildada definida en el mapeo
+        # El patrón r'[áéíóúüÁÉÍÓÚÜ]' busca una coincidencia de carácter individual
+        return re.sub(r'[áéíóúüÁÉÍÓÚÜ]', lambda m: mapeo[m.group()], texto)
+
+
 
 class DataTransformer:
     """Responsabilidad: Mapear diccionarios a listas para Sheets."""
@@ -55,16 +57,15 @@ class DataTransformer:
         for d in lista_datos:
             # Limpiar precio
             score_data1 = self.cleaner.limpiar_precio(d.get('precio', ''))
-            score_data2 = self.cleaner.limpiar_calificacion(d.get('calificacion', ''))
 
             # Usar datos originales si existen, si no usar los procesados
             fila = {
                 'divisa': d.get('divisa') or score_data1[0],
                 'precio': d.get('precio') if 'divisa' in d else score_data1[1],
-                'calificacion': d.get('calificacion') if 'review_promedio' in d else score_data2[0],
-                'review_promedio': d.get('review_promedio') or score_data2[1],
-                'comentarios': d.get('comentarios') or score_data2[2],
-                'puntaje': d.get('puntaje', ''),
+                'calificacion': d.get('calificacion'),
+                'review_promedio': d.get('review_promedio'),
+                'opiniones': d.get('comentarios'),
+                'puntuacion': d.get('puntuacion', ''),
                 'ciudad': d.get('ciudad', ''),
                 'check_in': d.get('check_in', ''),
                 'check_out': d.get('check_out', ''),

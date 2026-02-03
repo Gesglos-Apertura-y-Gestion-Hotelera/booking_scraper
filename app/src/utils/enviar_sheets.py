@@ -13,6 +13,8 @@ class GoogleSheetsClient:
 
     def enviar(self, datos, sheet_name: str):
         try:
+            import pprint as pp
+            print (f"\n\nDATOS  {pp.pformat(datos)}")
 
             payload = {
                 'data': datos,
