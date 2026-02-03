@@ -73,5 +73,8 @@ class DataTransformer:
                 'competidor': d.get('competidor', '')
             }
             filas.append(fila)
+            import pprint as pp
+            print(f"\n\nFILA \n")
+            pp.pprint(fila)
         return filas
 

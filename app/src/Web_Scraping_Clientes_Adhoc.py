@@ -9,8 +9,9 @@ from datetime import datetime, timedelta
 
 from core.scraper import BookingBaseScraper
 from core.chrome_driver import ChromeDriverFactory
-from utils.logger import logger
+from utils.cleaner import DataCleaner
 from utils.enviar_sheets import enviar_sheets
+from utils.logger import logger
 
 WEBAPP_URL = os.environ.get('WEBAPP_URL')
 
@@ -81,17 +82,22 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                 try:
                     nombre = self.extract_name()
                     precio = self.extract_price()
-                    calificacion = self.extract_rating()
+                    calificacion = self.extract_rating_details()
                 except Exception as e:
                     logger.warning(f"⚠️ {Hotel} ({checkin_str}): {e}")
                     nombre = Hotel
                     precio = "0"
                     calificacion = "No disponible"
 
+                cleaner = DataCleaner()
+                divisa, precio = cleaner.limpiar_precio(precio)
                 results.append({
                     'hotel': nombre,
+                    'divisa': divisa,
                     'precio': precio,
-                    'calificacion': calificacion,
+                    'review_promedio': calificacion.get("calificacion_cualitativa"),
+                    'opiniones': calificacion.get("comentarios"),
+                    'puntuacion': calificacion.get("puntuacion"),
                     'ciudad': ciudad,
                     'check_in': checkin_str,
                     'check_out': checkout_str
