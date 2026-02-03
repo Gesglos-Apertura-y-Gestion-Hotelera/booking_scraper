@@ -3,7 +3,7 @@
 Web Scraping Clientes Diario
 Lee JSON desde variable de entorno SHEET_DATA o argumento
 """
-
+import os
 import re
 import sys
 
@@ -13,11 +13,11 @@ from datetime import datetime, timedelta
 from core.scraper import BookingBaseScraper
 from core.chrome_driver import ChromeDriverFactory
 from utils.logger import logger
-from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
+from utils.enviar_sheets import enviar_sheets
 from utils.get_sheet_data import get_sheet_data
 
 
-WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyPzxk_tlVrVvQlZg0k8M0g_lIRifVqgf5EdA7EsdeMGdoHPYwNsZAiRN0Zk0U6EUbl/exec"
+WEBAPP_URL = os.environ.get('WEBAPP_URL')
 
 class ClientesDiarioScraper(BookingBaseScraper):
     """Scraper para búsqueda diaria de clientes"""
@@ -68,7 +68,7 @@ class ClientesDiarioScraper(BookingBaseScraper):
                 calificacion = "No disponible"
 
             results.append({
-                'nombre': nombre,
+                'hotel': nombre,
                 'precio': precio,
                 'calificacion': calificacion,
                 'ciudad': ciudad,
@@ -96,7 +96,7 @@ def buscar_reservas_hoy():
 
         # Enviar a Sheets
         logger.info(f"📤 Enviando {len(results)} resultados")
-        enviar_sheets_diario(results, WEBAPP_URL)
+        enviar_sheets(results, WEBAPP_URL, sheet_name='clientes')
 
         logger.info(f"✅ COMPLETADO: {len(results)} hoteles")
 
@@ -111,4 +111,5 @@ def buscar_reservas_hoy():
 
 
 if __name__ == "__main__":
+    # codigo para pruebas unitarias
     buscar_reservas_hoy()

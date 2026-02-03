@@ -1,70 +1,31 @@
 import requests
 import json
-import re
 
-class DataCleaner:
-    """Responsabilidad: Limpiar y transformar campos específicos."""
-    @staticmethod
-    def limpiar_calificacion(calif_raw):
-        if not calif_raw or '\n' not in str(calif_raw):
-            return ["", "", ""]
-        
-        partes = calif_raw.split('\n')
-        score = partes[1].strip() if len(partes) > 1 else ""
-        avg_review = partes[2].strip() if len(partes) > 2 else ""
-        
-        count_raw = partes[3] if len(partes) > 3 else ""
-        reviews_count = re.sub(r'\D', '', count_raw)
-        
-        return [score, avg_review, reviews_count]
-    
-    def limpiar_precio(self, price_raw):
-        if not price_raw:
-            return ["", ""]
 
-        partes = str(price_raw).split(" ")
-        if len(partes) >= 2:
-            currency = partes[0].strip()
-            price = partes[1].strip()
-            price = partes[1].replace('.', '').strip()
-            return [currency, price]
-
-        return ["", ""]
-
-class DataTransformer:
-    """Responsabilidad: Mapear diccionarios a listas para Sheets."""
-    def __init__(self, cleaner: DataCleaner):
-        self.cleaner = cleaner
-
-    def transformar_hoteles(self, lista_datos):
-        filas = []
-        for d in lista_datos:
-            score_data1 = self.cleaner.limpiar_precio(d.get('precio', ''))
-            score_data2 = self.cleaner.limpiar_calificacion(d.get('calificacion', ''))
-            
-            fila = [
-                *score_data1,
-                *score_data2,
-                d.get('ciudad', ''),
-                d.get('check_in', ''),
-                d.get('check_out', '')
-            ]
-            filas.append(fila)
-        return filas
+from .logger import logger
+from .cleaner import DataCleaner, DataTransformer
 
 class GoogleSheetsClient:
     """Responsabilidad: Comunicación externa con la API."""
+
     def __init__(self, url: str):
         self.url = url
 
-    def enviar(self, datos):
+    def enviar(self, datos, sheet_name: str):
         try:
+
+            payload = {
+                'data': datos,
+                'sheet': sheet_name
+            }
+
             response = requests.post(
                 self.url,
-                data=json.dumps(datos),
+                data=json.dumps(payload),
                 headers={'Content-Type': 'application/json'},
                 timeout=10
             )
+            logger.info(f"response:  {response.text}")
             response.raise_for_status()
             return True
         except requests.exceptions.RequestException as e:
@@ -72,9 +33,9 @@ class GoogleSheetsClient:
             return False
 
 # --- FUNCIÓN PRINCIPAL (ORQUESTADORA) ---
-def enviar_sheets_diario(lista_datos, url_apps_script):
+def enviar_sheets(lista_datos, url_apps_script, sheet_name: str):
     if not lista_datos:
-        print("⚠️ La lista está vacía.")
+        logger.info("⚠️ La lista está vacía.")
         return
 
     # Inyección de dependencias
@@ -84,6 +45,6 @@ def enviar_sheets_diario(lista_datos, url_apps_script):
 
     # Flujo de trabajo
     datos_listos = transformer.transformar_hoteles(lista_datos)
-    
-    if client.enviar(datos_listos):
-        print(f"✅ Éxito: {len(datos_listos)} filas procesadas y enviadas.")
+
+    if client.enviar(datos_listos, sheet_name):
+        logger.info(f"✅ Éxito: {len(datos_listos)} filas procesadas y enviadas a '{sheet_name}'.")

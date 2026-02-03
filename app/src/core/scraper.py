@@ -71,6 +71,7 @@ class BookingBaseScraper(ABC):
             nombre = self.extract_name()
             precio = self.extract_price()
             calificacion = self.extract_rating()
+            logger.info(f"hotel::  {nombre}\n precio:  {precio}\n calificacion:  {calificacion}")
         except Exception as e:
             logger.warning(f"⚠️ Error extrayendo: {e}")
             nombre = hotel_data.hotel
@@ -78,7 +79,7 @@ class BookingBaseScraper(ABC):
             calificacion = "No disponible"
 
         return HotelResult(
-            nombre=nombre,
+            hotel=nombre,
             precio=precio,
             calificacion=calificacion,
             ciudad=hotel_data.ciudad,
@@ -121,14 +122,94 @@ class BookingBaseScraper(ABC):
         except Exception:
             return "0"
 
-    def extract_rating(self) -> str:
-        """Extrae calificación"""
+    def extract_rating_details(self) -> dict:
+        """
+        Extrae detalles de calificación usando selectores CSS específicos.
+
+        Returns:
+            dict con  'puntuacion', 'calificacion_cualitativa', 'comentarios'
+        """
+        import re
+
+        puntuacion = "No disponible"
+        calificacion_cualitativa = "No disponible"
+        comentarios = "0"
+
         try:
-            return self.driver.find_element(
-                By.CSS_SELECTOR, '[data-testid="review-score"]'
-            ).text
-        except Exception:
-            return "No disponible"
+            # Extraer puntuación numérica del div con clase bc946a29db
+            # Ejemplo: "Puntuación: 9,9"
+            try:
+                puntuacion_element = self.driver.find_element(
+                    By.CSS_SELECTOR,
+                    'div.bc946a29db'
+                )
+                puntuacion_text = puntuacion_element.text
+                # Extraer solo el número (ej: "Puntuación: 9,9" -> "9,9")
+                puntuacion_match = re.search(r'(\d+[.,]\d+)', puntuacion_text)
+                if puntuacion_match:
+                    puntuacion = puntuacion_match.group(1)
+                    logger.debug(f"Puntuación extraída: {puntuacion}")
+            except Exception as e:
+                logger.debug(f"No se pudo extraer puntuación: {e}")
+
+
+            # Extraer calificación cualitativa "Fantástico" con clases hashed
+            try:
+                # Opción 1: Selector directo por texto exacto (robusto para cambios de clase)
+                calificacion_element = self.driver.find_element(
+                    By.XPATH, "//div[contains(text(), 'Fantástico')]"
+                )
+                calificacion_cualitativa = calificacion_element.text.strip()
+                logger.debug(f"Calificación cualitativa extraída: {calificacion_cualitativa}")
+            except Exception:
+                # Opción 2: Por clases parciales conocidas (si conoces patrón)
+                try:
+                    calificacion_element = self.driver.find_element(
+                        By.CSS_SELECTOR, 'div[class*="f63b14ab7a"], div[class*="f546354b44"]'
+                    )
+                    calificacion_cualitativa = calificacion_element.text.strip()
+                    logger.debug(f"Calificación por clases parciales: {calificacion_cualitativa}")
+                except Exception:
+                    # Fallback: regex en page_source (tu original mejorado)
+                    cualitativa_match = re.search(
+                        r'\b(Fantástico|Excelente|Muy\s+bueno|Bueno|Agradable)\b',
+                        self.driver.page_source, re.IGNORECASE
+                    )
+                    if cualitativa_match:
+                        calificacion_cualitativa = cualitativa_match.group(1)
+                        logger.debug(f"Calificación por regex: {calificacion_cualitativa}")
+                    else:
+                        logger.debug("No se encontró calificación cualitativa")
+
+            # Extraer número de comentarios
+            # Buscar patrones como: "102 comentarios" o "5 comentario" o "1.234 comentarios"
+            try:
+                comentarios_match = re.search(
+                    r'([\d.,]+)\s*comentarios?',
+                    self.driver.page_source,
+                    re.IGNORECASE
+                )
+                if comentarios_match:
+                    comentarios_raw = comentarios_match.group(1)
+                    # Limpiar puntos y comas (ej: "1.234" -> "1234")
+                    comentarios = re.sub(r'[.,]', '', comentarios_raw)
+                    logger.debug(f"Comentarios extraídos: {comentarios}")
+            except Exception as e:
+                logger.debug(f"No se pudieron extraer comentarios: {e}")
+
+            return {
+                'puntuacion': puntuacion,
+                'calificacion_cualitativa': calificacion_cualitativa,
+                'comentarios': comentarios
+            }
+
+        except Exception as e:
+            logger.warning(f"⚠️ Error extrayendo rating: {e}")
+            return {
+                'puntuacion': "No disponible",
+                'calificacion_cualitativa': "No disponible",
+                'comentarios': "0"
+            }
 
     @abstractmethod
     def run(self) -> List[dict]:

@@ -13,7 +13,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
+from utils.enviar_sheets import enviar_sheets
 from utils.get_dates import get_dates
 from utils.get_sheet_data import get_sheet_data
 from utils.logger import logger
@@ -105,7 +105,7 @@ def iniciar_busqueda():
         # Avanzar al siguiente día en el rango
         fecha_actual = siguiente_dia
 
-    enviar_sheets_diario(hotels_list, WEBAPP_URL)
+    enviar_sheets(hotels_list, WEBAPP_URL)
 
     # Cerrar el navegador al finalizar
     driver.quit()
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 Scraper Ad-Hoc para búsqueda de clientes en rango de fechas
 Hereda y reutiliza ClientesDiarioScraper
 """
-
+import os
 import re
 import time
 from datetime import datetime, timedelta
@@ -127,8 +127,9 @@ from datetime import datetime, timedelta
 from core.scraper import BookingBaseScraper
 from core.chrome_driver import ChromeDriverFactory
 from utils.logger import logger
-from utils.enviar_sheets_clientes_diario import enviar_sheets_diario
+from utils.enviar_sheets import enviar_sheets
 
+WEBAPP_URL = os.environ.get('WEBAPP_URL')
 
 class ClientesDiarioScraperAdHoc(BookingBaseScraper):
     """
@@ -173,25 +174,25 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                     continue
 
                 # Normalizar claves (mayúsculas o minúsculas)
-                hotel = hotel_data.get('hotel') or hotel_data.get('Hotel') or ''
+                Hotel = hotel_data.get('hotel') or hotel_data.get('Hotel') or ''
                 ciudad = hotel_data.get('ciudad') or hotel_data.get('Ciudad') or ''
 
-                if not hotel or not ciudad:
+                if not Hotel or not ciudad:
                     logger.warning(f"⚠️ Datos incompletos: {hotel_data}")
                     continue
 
                 # Construir búsqueda
-                hotel_ciudad = f"{hotel} - {ciudad}"
+                hotel_ciudad = f"{Hotel} - {ciudad}"
                 hotel_ciudad = re.sub(r"\s{1,10}", "+", hotel_ciudad)
 
                 # Usar el metodo heredado de BookingBaseScraper
                 url = self.build_search_url(hotel_ciudad, checkin_str, checkout_str)
-                logger.info(f"🔍 {hotel} | {checkin_str}")
-
+                logger.info(f"🔍 {Hotel} | {checkin_str}")
+                logger.info(f"url: {url}")
                 self.driver.get(url)
-                time.sleep(5)
+                #time.sleep(5)
                 self.close_popup()
-                time.sleep(2)
+                #time.sleep(2)
 
                 # Extraer datos usando métodos heredados
                 try:
@@ -199,13 +200,13 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                     precio = self.extract_price()
                     calificacion = self.extract_rating()
                 except Exception as e:
-                    logger.warning(f"⚠️ {hotel} ({checkin_str}): {e}")
-                    nombre = hotel
+                    logger.warning(f"⚠️ {Hotel} ({checkin_str}): {e}")
+                    nombre = Hotel
                     precio = "0"
                     calificacion = "No disponible"
 
                 results.append({
-                    'nombre': nombre,
+                    'hotel': nombre,
                     'precio': precio,
                     'calificacion': calificacion,
                     'ciudad': ciudad,
@@ -217,11 +218,12 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
 
             # Avanzar al siguiente día
             fecha_actual = siguiente_dia
-
+            logger.info(f"✅✅ pasando a la siguiente fecha: {fecha_actual}")
+        logger.info(f"results: {results}")
         return results
 
 
-def buscar_reservas_adhoc(hoteles: list, check_in: datetime, check_out: datetime, webapp_url: str = None):
+def buscar_reservas_adhoc(hoteles: list, check_in: datetime, check_out: datetime, webapp_url: str = os.environ.get('WEBAPP_URL')):
     """
     Función principal para ejecutar el scraper ad-hoc.
 
@@ -245,10 +247,8 @@ def buscar_reservas_adhoc(hoteles: list, check_in: datetime, check_out: datetime
         scraper = ClientesDiarioScraperAdHoc(driver, hoteles, check_in, check_out)
         results = scraper.run()
 
-        # Enviar a Sheets si se proporciona URL
-        if webapp_url:
-            logger.info(f"📤 Enviando {len(results)} resultados a Sheets")
-            enviar_sheets_diario(results, webapp_url)
+        logger.info(f"📤 Enviando {len(results)} resultados a Sheets")
+        enviar_sheets(results, os.environ.get('WEBAPP_URL'), sheet_name='clientes')
 
         logger.info(f"✅ COMPLETADO: {len(results)} registros")
         return results
@@ -257,13 +257,15 @@ def buscar_reservas_adhoc(hoteles: list, check_in: datetime, check_out: datetime
         logger.error(f"💥 ERROR: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        raise
+        pass
     finally:
         if driver:
             driver.quit()
 
 
 if __name__ == "__main__":
+    # codigo para pruebas unitarias
+
     # Datos de prueba
     fake_hoteles = [
         {'Hotel': 'Hotel Dann Carlton Bogotá', 'Ciudad': 'Bogotá'},
@@ -280,7 +282,7 @@ if __name__ == "__main__":
         hoteles=fake_hoteles,
         check_in=fecha_inicio,
         check_out=fecha_fin,
-        webapp_url=None  # Cambiar a tu WEBAPP_URL si quieres enviar a Sheets
+        webapp_url=os.environ.get('WEBAPP_URL')
     )
 
     # Mostrar resultados
