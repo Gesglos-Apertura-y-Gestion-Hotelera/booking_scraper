@@ -95,13 +95,13 @@ sequenceDiagram
 Test en local, para poder correr el proyecto de forma correcta use lo siguientes comandos segun sea el caso que va a probar:
 
 clientes_diario
-### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app clientes_diario '[{"ciudad":"Mariquita","hotel":"Hotel Brisas La Gaviota Mariquit-Tolima","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""},{"ciudad":"Medellin","hotel":"Botánica Casa Hotel Manilab y HOUSY","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""}]' 2026-02-01 2026-02-02
+### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app clientes_diario '[{"ciudad":"Mariquita","hotel":"Hotel Brisas La Gaviota Mariquit-Tolima","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""},{"ciudad":"Medellin","hotel":"Botánica Casa Hotel Manilab y HOUSY","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""}]' 2026-02-01 2026-02-02  
 
 clientes_prevision
 ### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app clientes_prevision '[{"ciudad":"Mariquita","hotel":"Hotel Brisas La Gaviota Mariquit-Tolima","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""},{"ciudad":"Medellin","hotel":"Botánica Casa Hotel Manilab y HOUSY","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""}]' "2026-02-01" "2026-02-05"
 
 competencia_diario
-### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app competencia_diario '[{"hotel": "Hotel Brisas La Gaviota Mariquit-Tolima","competidor": "Arvum Hotel Boutique","ciudad": "El peñol","buscar": "Arvum Hotel Boutique, El peñol"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]'
+### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app competencia_diario '[{"hotel": "Porto Marina Hotel","competidor": "Hotel Bambu Guatape","ciudad": "Guatapé","buscar": "Hotel Bambu Guatape, Guatapé"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]'
 
 competencia_prevision 
 ### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app competencia_prevision '[{"hotel": "Hotel Brisas La Gaviota Mariquit-Tolima","competidor": "Arvum Hotel Boutique","ciudad": "El peñol","buscar": "Arvum Hotel Boutique, El peñol"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2026-04-01" "2026-04-05"

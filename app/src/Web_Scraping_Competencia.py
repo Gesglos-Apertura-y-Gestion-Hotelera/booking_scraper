@@ -81,10 +81,13 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
                 'calificacion_cualitativa': "",
                 'comentarios': None
             }
-
+            cleaner = DataCleaner()
+            divisa, precio = cleaner.limpiar_precio(precio)
+            print(f"divisa = {divisa} precio= {precio}")
             results.append({
                 'hotel': nombre,
                 'precio': precio,
+                'divisa': divisa,
                 'puntuacion': rating_details['puntuacion'],
                 'competidor': competidor,
                 'review_promedio': rating_details['calificacion_cualitativa'],
