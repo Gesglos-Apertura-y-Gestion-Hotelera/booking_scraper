@@ -1,116 +1,142 @@
+#!/usr/bin/env python3
+"""
+Web Scraping Competencia Diario
+Scraping diario de precios de competidores en Booking.com
+"""
 import os
+import re
+import sys
 import time
-import pandas as pd
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename
 from datetime import datetime, timedelta
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 
-# Obtener la fecha actual y sumar un día para el check-out
-checkin = datetime.now().strftime('%Y-%m-%d')
-checkout = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+from core.scraper import BookingBaseScraper
+from core.chrome_driver import ChromeDriverFactory
+from utils.cleaner import DataCleaner
+from utils.enviar_sheets import enviar_sheets
+from utils.get_sheet_data import get_sheet_data
+from utils.logger import logger
 
-# Abrir cuadro de diálogo para seleccionar el archivo
-Tk().withdraw()
-ruta_archivo = askopenfilename(title="Selecciona el archivo Excel", filetypes=[("Archivos Excel", "*.xlsx")])
 
-# Cargar el archivo seleccionado
-df = pd.read_excel(ruta_archivo, sheet_name='Competencia')
+class CompetenciaDiarioScraper(BookingBaseScraper):
+    """Scraper para búsqueda diaria de competidores"""
 
-# Suponiendo que los competidores están en columnas llamadas 'Competidor' y 'Ciudad'
-competencia_ciudades = df[['Competidor', 'Ciudad']].to_dict(orient='records')
+    def __init__(self, driver, competidores: list):
+        """
+        Args:
+            driver: Instancia de Selenium WebDriver
+            competidores: Lista de dicts con 'competidor'/'Competidor' y 'ciudad'/'Ciudad'
+        """
+        super().__init__(driver)
+        self.competidores = competidores
 
-# Configuración del driver de Selenium (Chrome)
-options = webdriver.ChromeOptions()
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    def run(self) -> list:
+        """Ejecuta scraping para todos los competidores"""
+        checkin = datetime.now().strftime('%Y-%m-%d')
+        checkout = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        #
+        # checkin = (datetime.now() + timedelta(days=60)).strftime('%Y-%m-%d')
+        # checkout = (datetime.now() + timedelta(days=61)).strftime('%Y-%m-%d')
 
-# Lista para almacenar los datos de los competidores
-hotels_list = []
+        logger.info(f"📅 Check-in: {checkin} | Check-out: {checkout}")
 
-# Iterar sobre la lista de competidores
-for competencia_info in competencia_ciudades:
-    competencia = competencia_info['Competidor']
-    ciudad = competencia_info['Ciudad']
-    
-    # Crear la URL dinámica para cada competidor y ciudad
-    url = f'https://www.booking.com/searchresults.es.html?ss={competencia}%20{ciudad}&checkin={checkin}&checkout={checkout}&group_adults=2&no_rooms=1&group_children=0'
-    
-    # Abrir la página con la URL generada
-    driver.get(url)
-    time.sleep(5)
+        results = []
+        for comp_data in self.competidores:
+            if not isinstance(comp_data, dict):
+                logger.error(f"❌ Elemento no es dict: {type(comp_data)}")
+                continue
 
-    # Cerrar pop-up si aparece
-    try:
-        close_popup_button = driver.find_element(By.XPATH, '//button[@aria-label="Ignorar información sobre el inicio de sesión."]')
-        close_popup_button.click()
-        time.sleep(2)
-    except Exception:
-        pass  # Ignora el error si no encuentra el pop-up
+            # Normalizar claves (mayúsculas o minúsculas)
+            competidor = comp_data.get('competidor') or comp_data.get('Competidor') or ''
+            ciudad = comp_data.get('ciudad') or comp_data.get('Ciudad') or ''
+            hotel = comp_data.get('hotel') or comp_data.get('Hotel') or ''
+            buscar = comp_data.get('buscar') or comp_data.get('Buscar') or ''
 
-    # Crear un diccionario para almacenar la información del competidor
-    hotel_dict = {}
+            if not competidor or not ciudad:
+                logger.warning(f"⚠️ Datos incompletos: {comp_data}")
+                continue
 
-    # Capturar precios en orden de prioridad
-    try:
-        # Precio alternativo (Desde)
-        try:
-            precio_alternativo = driver.find_element(By.CSS_SELECTOR, 'div.abf093bdfe.fc23698243')
-            hotel_dict['precio'] = precio_alternativo.text.replace("Desde ", "").strip()
-        except Exception:
-            # Precio con descuento
+            # Construir búsqueda: "Nombre Competidor Ciudad"
+            competidor_ciudad = f"{competidor} - {ciudad}"
+            # competidor_ciudad = re.sub(r"\s{1,10}", "+", competidor_ciudad)
+
+            url = self.build_search_url(competidor_ciudad, checkin, checkout)
+            logger.info(f"🔍 URL: {url}")
+
+            self.driver.get(url)
+            time.sleep(5)
+            self.close_popup()
+            time.sleep(2)
+
             try:
-                precio_descuento = driver.find_element(By.XPATH, '//span[@data-testid="price-and-discounted-price"]')
-                hotel_dict['precio'] = precio_descuento.text.strip()
-            except Exception:
-                # Precio base
-                try:
-                    precio_base = driver.find_element(By.CSS_SELECTOR, '[data-testid="price"]')
-                    hotel_dict['precio'] = precio_base.text.strip()
-                except Exception:
-                    hotel_dict['precio'] = "0"  # Ningún precio disponible
+                nombre = self.extract_name()
+                precio = self.extract_price()
+                rating_details = self.extract_rating_details()
 
-        # Extraer nombre y calificación
-        hotel_dict['nombre'] = (
-            driver.find_element(By.CSS_SELECTOR, '[data-testid="title"]').text
-            if driver.find_elements(By.CSS_SELECTOR, '[data-testid="title"]')
-            else "No se encontró"
-        )
-        hotel_dict['calificacion'] = (
-            driver.find_element(By.CSS_SELECTOR, '[data-testid="review-score"]').text
-            if driver.find_elements(By.CSS_SELECTOR, '[data-testid="review-score"]')
-            else "0"
-        )
+            except Exception as e:
+                logger.warning(f"⚠️ {competidor} ({checkin}): {e}")
+                nombre = competidor
+                precio = "0"
+                rating_details = {
+                'puntuacion': 0,
+                'calificacion_cualitativa': "",
+                'comentarios': None
+            }
 
-    except Exception:
-        # En caso de error, asignar valores predeterminados
-        hotel_dict['nombre'] = competencia
-        hotel_dict['precio'] = "0"
-        hotel_dict['calificacion'] = "0"
+            results.append({
+                'hotel': nombre,
+                'precio': precio,
+                'puntuacion': rating_details['puntuacion'],
+                'competidor': competidor,
+                'review_promedio': rating_details['calificacion_cualitativa'],
+                'ciudad': ciudad,
+                'check_in': checkin,
+                'check_out': checkout,
+                'comentarios': rating_details['comentarios'],
+            })
 
-    # Agregar información adicional al diccionario
-    hotel_dict['competidor'] = competencia
-    hotel_dict['ciudad'] = ciudad
-    hotel_dict['check_in'] = checkin
-    hotel_dict['check_out'] = checkout
+            logger.info(f"✅  rating_details {rating_details} ")
+        import pprint as pp
+        print("results:\n")
+        pp.pprint(results)
+        print("\n\n")
+        print("rating details:\n")
+        pp.pprint(rating_details)
 
-    hotels_list.append(hotel_dict)
+        return results
 
-# Guardar los datos en un archivo CSV
-df_hotels = pd.DataFrame(hotels_list)
 
-# Crear la carpeta de guardado si no existe
-home_dir = os.path.expanduser("~")
-ruta_guardado = os.path.join(home_dir, 'Documents', 'scraping_results', 'Competencia')
-if not os.path.exists(ruta_guardado):
-    os.makedirs(ruta_guardado)
+def buscar_competencia_hoy():
+    """Función principal para ejecutar el scraper diario de competencia"""
+    logger.info("🚀 SCRAPING COMPETENCIA DIARIO")
 
-# Guardar con nombre seguro
-nombre_archivo = os.path.join(ruta_guardado, f'{checkin}.csv')
-df_hotels.to_csv(nombre_archivo, index=False, encoding='utf-8-sig')
-print(f"Archivo guardado en: {nombre_archivo}")
+    driver = None
+    try:
+        # Obtener datos de competidores
+        competidores = get_sheet_data()
 
-# Cerrar el navegador al finalizar
-driver.quit()
+        # Ejecutar scraping
+        driver = ChromeDriverFactory.create_headless_driver()
+        ChromeDriverFactory.setup_booking_cookies(driver)
+
+        scraper = CompetenciaDiarioScraper(driver, competidores)
+        results = scraper.run()
+
+        # Enviar a Sheets
+        logger.info(f"📤 Enviando {len(results)} resultados")
+        enviar_sheets(results, os.environ.get('WEBAPP_URL'), sheet_name='competencia')
+
+        logger.info(f"✅ COMPLETADO: {len(results)} competidores")
+
+    except Exception as e:
+        logger.error(f"💥 ERROR: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+    finally:
+        if driver:
+            driver.quit()
+
+
+if __name__ == "__main__":
+    # codigo para pruebas unitarias
+    buscar_competencia_hoy()

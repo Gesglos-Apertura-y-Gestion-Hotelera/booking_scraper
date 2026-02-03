@@ -42,7 +42,7 @@ function doPost(e) {
           item.divisa || '',
           item.precio || '',
           item.review_promedio || '',
-          item.comentarios || '',
+          item.opiniones || '',
           item.puntuacion || '',
           item.ciudad || '',
           item.check_in || '',
@@ -58,7 +58,7 @@ function doPost(e) {
           item.precio || '',
           item.puntuacion || '',
           item.review_promedio || '',
-          item.comentarios || '',
+          item.opiniones || '',
           item.competidor || '',
           item.ciudad || '',
           item.check_in || '',
@@ -73,7 +73,7 @@ function doPost(e) {
           item.divisa || '',
           item.precio || '',
           item.review_promedio || '',
-          item.comentarios || '',
+          item.opiniones || '',
           item.puntuacion || '',
           item.ciudad || '',
           item.check_in || '',
@@ -85,6 +85,26 @@ function doPost(e) {
       return ContentService.createTextOutput(
         JSON.stringify({error: 'Sheet no soportada: ' + sheetName})
       ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    Logger.log('Headers encontrados: ' + headers);
+
+    // ✅ MAPEAR DATOS SEGÚN LOS HEADERS
+    var rows = [];
+    for (var i = 0; i < data.length; i++) {
+      var item = data[i];
+      var row = [];
+
+      for (var j = 0; j < headers.length; j++) {
+        var header = headers[j].toString().toLowerCase().trim();
+
+        // Buscar el valor correspondiente en el objeto
+        var value = item[header] || '';
+        row.push(value);
+      }
+
+      rows.push(row);
     }
 
     // Escribir en la sheet (agregar al final)
