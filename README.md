@@ -104,8 +104,10 @@ competencia_diario
 ### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app competencia_diario '[{"hotel": "Hotel Brisas La Gaviota Mariquit-Tolima","competidor": "Arvum Hotel Boutique","ciudad": "El peñol","buscar": "Arvum Hotel Boutique, El peñol"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]'
 
 competencia_prevision 
+### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app competencia_prevision '[{"hotel": "Hotel Brisas La Gaviota Mariquit-Tolima","competidor": "Arvum Hotel Boutique","ciudad": "El peñol","buscar": "Arvum Hotel Boutique, El peñol"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2026-04-01" "2026-04-05"
 
 seguimiento_diario
+
 
 personalizado
 
