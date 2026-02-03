@@ -83,6 +83,9 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                     nombre = self.extract_name()
                     precio = self.extract_price()
                     calificacion = self.extract_rating_details()
+                    import pprint as pp
+                    print("*******************")
+                    pp.pprint(precio)
                 except Exception as e:
                     logger.warning(f"⚠️ {Hotel} ({checkin_str}): {e}")
                     nombre = Hotel

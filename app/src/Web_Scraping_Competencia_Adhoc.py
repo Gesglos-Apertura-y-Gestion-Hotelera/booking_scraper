@@ -94,8 +94,9 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                     'divisa': divisa,
                     'precio': precio,
                     'review_promedio': calificacion.get("calificacion_cualitativa"),
-                    'opiniones': calificacion.get("comentarios"),
+                    'comentarios': calificacion.get("comentarios"),
                     'puntuacion': calificacion.get("puntuacion"),
+                    'competidor': competidor,
                     'ciudad': ciudad,
                     'check_in': checkin_str,
                     'check_out': checkout_str

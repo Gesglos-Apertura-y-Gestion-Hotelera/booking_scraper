@@ -104,6 +104,17 @@ class BookingBaseScraper(ABC):
             )
             return element.text.replace("Desde ", "").strip()
         except Exception:
+            logger.info(f"1 falló extraccion de precio")
+            pass
+        
+        try:
+            element = self.driver.find_element(
+                By.CSS_SELECTOR, 'div.fff1944c52.e1ca2942a5'
+            )
+            element = element.text.replace("Desde ", "").strip()
+            return element.text.replace(".", "").strip()
+        except Exception:
+            logger.info(f"2 falló extraccion de precio")
             pass
 
         # Precio con descuento
@@ -113,6 +124,7 @@ class BookingBaseScraper(ABC):
             )
             return element.text.strip()
         except Exception:
+            logger.info(f"3 falló extraccion de precio")
             pass
 
         # Precio base
@@ -122,6 +134,7 @@ class BookingBaseScraper(ABC):
             )
             return element.text.strip()
         except Exception:
+            logger.info(f"4 falló extraccion de precio")
             return "0"
 
     def extract_puntuacion(self) -> str:

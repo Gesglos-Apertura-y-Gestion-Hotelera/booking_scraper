@@ -39,14 +39,16 @@ def enviar_sheets(lista_datos, url_apps_script, sheet_name: str):
     if not lista_datos:
         logger.info("⚠️ La lista está vacía.")
         return
-
+    """
     # Inyección de dependencias
     cleaner = DataCleaner()
     transformer = DataTransformer(cleaner)
+    """
     client = GoogleSheetsClient(url_apps_script)
-
+    """
     # Flujo de trabajo
     datos_listos = transformer.transformar_hoteles(lista_datos)
-
+    """
+    datos_listos = lista_datos
     if client.enviar(datos_listos, sheet_name):
         logger.info(f"✅ Éxito: {len(datos_listos)} filas procesadas y enviadas a '{sheet_name}'.")
