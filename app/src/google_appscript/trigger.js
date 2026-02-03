@@ -1,4 +1,4 @@
-function doPost(e) {
+function doGet(e) {
   try {
     console.log("=== INICIO DE PETICIÓN ===");
   
@@ -12,10 +12,14 @@ function doPost(e) {
   console.log("- script_key: " + scriptKey);
   console.log("- check_in: " + checkIn);
   console.log("- check_out: " + checkOut);
+  Logger.log("Parámetros recibidos:");
+  Logger.log("- script_key: " + scriptKey);
+  Logger.log("- check_in: " + checkIn);
+  Logger.log("- check_out: " + checkOut);
   
     // Leer datos del sheet
     var spreadsheetId = "1ZsS-tWfgn3Zzl4DNWX9u1UagRfC4ZwydeZPMymVfOGY";
-    //var sheetName = "Cliente";
+
     
     var sheetName = "";
 
@@ -60,12 +64,13 @@ function doPost(e) {
         "hotel": String(row[1])    
       };
     });
-    
-    Logger.log("Registros: " + records.length);
+    console.log("records:")
+    console.log(JSON.stringify(records, null, 2));
+    Logger.log(records);
     
     // Disparar GitHub Actions
     var url = 'https://api.github.com/repos/Gesglos-Apertura-y-Gestion-Hotelera/booking_scraper/actions/workflows/selenium.yml/dispatches';
-    var token = aqui va un token;
+    var token = "aqui va el token";
     
     var payload = {
       "ref": "main", 
