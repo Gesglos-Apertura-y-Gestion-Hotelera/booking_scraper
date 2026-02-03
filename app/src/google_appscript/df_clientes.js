@@ -43,7 +43,7 @@ function doPost(e) {
           item.precio || '',
           item.review_promedio || '',
           item.comentarios || '',
-          item.calificacion || '',
+          item.puntuacion || '',
           item.ciudad || '',
           item.check_in || '',
           item.check_out || ''
@@ -56,7 +56,7 @@ function doPost(e) {
           item.hotel || '',
           item.divisa || '',
           item.precio || '',
-          item.calificacion || '',
+          item.puntuacion || '',
           item.review_promedio || '',
           item.comentarios || '',
           item.competidor || '',
@@ -74,7 +74,7 @@ function doPost(e) {
           item.precio || '',
           item.review_promedio || '',
           item.comentarios || '',
-          item.calificacion || '',
+          item.puntuacion || '',
           item.ciudad || '',
           item.check_in || '',
           item.check_out || ''
