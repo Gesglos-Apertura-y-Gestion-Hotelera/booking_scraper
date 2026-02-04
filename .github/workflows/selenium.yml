@@ -65,12 +65,18 @@ jobs:
 
       - name: Run scraper container
         env:
+          SCRIPT_KEY: ${{ steps.params.outputs.script_key }}
           SHEET_DATA: ${{ steps.params.outputs.sheet_data }}
+          CHECK_IN: ${{ steps.params.outputs.check_in }}
+          CHECK_OUT: ${{ steps.params.outputs.check_out }}
         run: |
           docker run --shm-size=2gb \
             -e BOOKING_CURRENCY=COP \
             -e BOOKING_COUNTRY=co \
             -e SHEET_DATA="$SHEET_DATA" \
+            -e SCRIPT_KEY="$SCRIPT_KEY" \
+            -e CHECK_IN="CHECK_IN" \
+            -e CHECK_OUT="CHECK_OUT" \
             selenium-app \
             "${{ steps.params.outputs.script_key }}" \
             "${{ steps.params.outputs.check_in }}" \
