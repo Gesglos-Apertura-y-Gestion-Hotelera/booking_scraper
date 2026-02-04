@@ -75,8 +75,8 @@ jobs:
             -e BOOKING_COUNTRY=co \
             -e SHEET_DATA="$SHEET_DATA" \
             -e SCRIPT_KEY="$SCRIPT_KEY" \
-            -e CHECK_IN="CHECK_IN" \
-            -e CHECK_OUT="CHECK_OUT" \
+            -e CHECK_IN="$CHECK_IN" \
+            -e CHECK_OUT="$CHECK_OUT" \
             selenium-app \
             "${{ steps.params.outputs.script_key }}" \
             "${{ steps.params.outputs.check_in }}" \
