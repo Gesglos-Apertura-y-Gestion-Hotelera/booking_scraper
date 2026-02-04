@@ -1,148 +1,138 @@
+#!/usr/bin/env python3
+"""
+Web Scraping Daily Tracking
+Scraping de hoteles por ciudad para seguimiento diario
+Lee datos de ciudades desde variable de entorno SHEET_DATA
+"""
 import os
-import time
-import pandas as pd
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename
+import sys
 from datetime import datetime, timedelta
-from selenium import webdriver
+from typing import List, Set
+
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException
 
-# Obtener la fecha actual para check-in y sumar un día para check-out
-checkin = datetime.today().date()
-checkout = checkin + timedelta(days=1)
+from core.scraper import BookingBaseScraper
+from core.chrome_driver import ChromeDriverFactory
+from utils.logger import logger
+from utils.enviar_sheets import enviar_sheets
+from utils.get_sheet_data import get_sheet_data
 
-# Abrir cuadro de diálogo para seleccionar el archivo
-Tk().withdraw()  # Evitar que aparezca la ventana principal de Tkinter
-ruta_archivo = askopenfilename(title="Selecciona el archivo Excel", filetypes=[("Archivos Excel", "*.xlsx")])
+WEBAPP_URL = os.environ.get('WEBAPP_URL')
 
-# Validar que se haya seleccionado un archivo
-if not ruta_archivo:
-    print("No se seleccionó ningún archivo. El programa terminará.")
-    exit()
 
-# Cargar el archivo seleccionado
-try:
-    df = pd.read_excel(ruta_archivo, sheet_name='Cliente')
-except Exception as e:
-    print(f"Error al cargar el archivo Excel: {e}")
-    exit()
+class DailyTrackingScraper(BookingBaseScraper):
+    """Scraper para seguimiento diario de hoteles por ciudad"""
 
-# Suponiendo que las ciudades están en una columna llamada 'Ciudad'
-# Remover duplicados y considerar solo texto antes de la coma
-try:
-    ciudades = list({ciudad.split(",")[0].strip() for ciudad in df['Ciudad'].tolist() if isinstance(ciudad, str)})
-except KeyError:
-    print("La columna 'Ciudad' no se encontró en el archivo. El programa terminará.")
-    exit()
+    def __init__(self, driver, hoteles: list):
+        """
+        Inicializa el scraper de seguimiento diario
 
-# Configuración del driver de Selenium (Chrome)
-options = webdriver.ChromeOptions()
-try:
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-except Exception as e:
-    print(f"Error al inicializar el driver de Selenium: {e}")
-    exit()
+        Args:
+            driver: WebDriver de Selenium
+            hoteles: Lista de diccionarios con información de ciudades
+                    Formato esperado: [{'ciudad': 'Bogotá', ...}, ...]
+        """
+        super().__init__(driver)
+        self.hoteles = hoteles
 
-# Lista para almacenar todos los datos de hoteles
-hotels_list = []
+    def extract_cities(self) -> List[str]:
+        """
+        Extrae ciudades únicas de la lista de hoteles
+        Toma solo el texto antes de la coma y elimina duplicados
 
-# Iterar sobre la lista de ciudades únicas y procesadas
-for ciudad in ciudades:
-    print(f"Procesando la ciudad: {ciudad}")
-    # Crear la URL dinámicamente para cada ciudad
-    url = f'https://www.booking.com/searchresults.es.html?ss={ciudad}&checkin={checkin}&checkout={checkout}&group_adults=2&no_rooms=1&group_children=0'
-    
-    # Abrir la página con la URL generada
+        Returns:
+            Lista de ciudades únicas procesadas
+        """
+        ciudades: Set[str] = set()
+
+        for hotel_data in self.hoteles:
+            if not isinstance(hotel_data, dict):
+                logger.warning(f"⚠️ Elemento no es dict: {type(hotel_data)}")
+                continue
+
+            # Intentar obtener ciudad con diferentes formatos de clave
+            ciudad = hotel_data.get('ciudad') or hotel_data.get('Ciudad') or ''
+
+            if ciudad and isinstance(ciudad, str):
+                # Tomar solo el texto antes de la coma
+                ciudad_limpia = ciudad.split(",")[0].strip()
+                if ciudad_limpia:
+                    ciudades.add(ciudad_limpia)
+
+        ciudades_lista = sorted(list(ciudades))
+        logger.info(f"🏙️ Ciudades únicas encontradas: {len(ciudades_lista)}")
+        logger.info(f"📍 Ciudades: {', '.join(ciudades_lista)}")
+
+        return ciudades_lista
+
+    def run(self) -> list:
+        """
+        Ejecuta scraping para todas las ciudades
+
+        Returns:
+            Lista de diccionarios con información de todos los hoteles
+        """
+        checkin = datetime.now().strftime('%Y-%m-%d')
+        checkout = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+
+        logger.info(f"📅 Check-in: {checkin} | Check-out: {checkout}")
+
+        # Extraer ciudades únicas
+        ciudades = self.extract_cities()
+
+        if not ciudades:
+            logger.warning("⚠️ No se encontraron ciudades para procesar")
+            return []
+
+        # Procesar cada ciudad
+        results = []
+        for ciudad in ciudades:
+            city_hotels = self.extract_hotels_from_city(ciudad, checkin, checkout)
+            results.extend(city_hotels)
+
+        logger.info(f"📊 Total de hoteles extraídos: {len(results)}")
+
+        return results
+
+
+def buscar_hoteles_por_ciudad():
+    """Función standalone para ejecutar el scraper de seguimiento diario"""
+    logger.info("🚀 SCRAPING SEGUIMIENTO DIARIO")
+
+    driver = None
     try:
-        driver.get(url)
-        time.sleep(5)  # Esperar a que se cargue la página
+        # Obtener datos de ciudades desde la variable de entorno
+        hoteles = get_sheet_data()
+
+        if not hoteles:
+            logger.error("❌ No hay datos de ciudades para procesar")
+            sys.exit(1)
+
+        # Ejecutar scraping
+        driver = ChromeDriverFactory.create_headless_driver()
+        ChromeDriverFactory.setup_booking_cookies(driver)
+
+        scraper = DailyTrackingScraper(driver, hoteles)
+        results = scraper.run()
+
+        # Enviar a Sheets
+        logger.info(f"📤 Enviando {len(results)} resultados")
+        enviar_sheets(results, WEBAPP_URL, sheet_name='ciudades')
+
+        logger.info(f"✅ COMPLETADO: {len(results)} hoteles")
+
     except Exception as e:
-        print(f"Error al cargar la página para la ciudad {ciudad}: {e}")
-        continue
+        logger.error(f"💥 ERROR: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+    finally:
+        if driver:
+            logger.info("🔌 Cerrando driver...")
+            driver.quit()
 
-    # Cerrar pop-up si aparece
-    try:
-        close_popup_button = driver.find_element(By.XPATH, '//button[@aria-label="Ignorar información sobre el inicio de sesión."]')
-        close_popup_button.click()
-        time.sleep(2)  # Espera breve para asegurarse de que el pop-up desaparezca
-    except Exception:
-        print(f"No se pudo cerrar el pop-up en {ciudad} (si existía).")
 
-    # Buscar todos los elementos de hoteles
-    try:
-        hotels = driver.find_elements(By.XPATH, '//div[@data-testid="property-card"]')
-        if not hotels:
-            print(f"No se encontraron hoteles para la ciudad {ciudad}.")
-            continue
-    except Exception as e:
-        print(f"Error al buscar hoteles para la ciudad {ciudad}: {e}")
-        continue
-
-    # Recorrer cada hotel y extraer la información
-    for hotel in hotels:
-        hotel_dict = {}
-        
-        # Extraer nombre del hotel
-        try:
-            hotel_dict['hotel'] = hotel.find_element(By.XPATH, './/div[@data-testid="title"]').text
-        except:
-            hotel_dict['hotel'] = "No disponible"
-        
-        # Extraer el precio con descuento (si existe) o el precio base
-        try:
-            # Intentar obtener el precio con descuento
-            hotel_dict['price'] = hotel.find_element(By.XPATH, './/span[@data-testid="price-and-discounted-price"]').text
-        except:
-            # Si no se encuentra un precio con descuento, intentar el precio base
-            try:
-                hotel_dict['price'] = hotel.find_element(By.XPATH, './/span[@data-testid="price"]').text
-            except:
-                hotel_dict['price'] = "No disponible"
-        
-        # Extraer calificación
-        try:
-            hotel_dict['score'] = hotel.find_element(By.XPATH, './/div[@data-testid="review-score"]/div[1]').text
-        except:
-            hotel_dict['score'] = "No disponible"
-        
-        # Extraer reseña promedio
-        try:
-            hotel_dict['avg review'] = hotel.find_element(By.XPATH, './/div[@data-testid="review-score"]/div[2]/div[1]').text
-        except:
-            hotel_dict['avg review'] = "No disponible"
-        
-        # Extraer el número de reseñas
-        try:
-            hotel_dict['reviews count'] = hotel.find_element(By.XPATH, './/div[@data-testid="review-score"]/div[2]/div[2]').text.split()[0]
-        except:
-            hotel_dict['reviews count'] = "No disponible"
-        
-        # Agregar ciudad, check-in y check-out al diccionario de cada hotel
-        hotel_dict['ciudad'] = ciudad
-        hotel_dict['check_in'] = checkin
-        hotel_dict['check_out'] = checkout
-
-        hotels_list.append(hotel_dict)
-
-# Crear un DataFrame con todos los datos recopilados
-df_hotels = pd.DataFrame(hotels_list)
-
-# Definir la carpeta de guardado
-home_dir = os.path.expanduser("~")
-ruta_guardado = os.path.join(home_dir, 'Documents', 'scraping_results', 'Daily_Tracking')
-if not os.path.exists(ruta_guardado):
-    os.makedirs(ruta_guardado)
-
-# Guardar el DataFrame completo en un único archivo CSV
-nombre_archivo = os.path.join(ruta_guardado, f'{checkin}.csv')
-try:
-    df_hotels.to_csv(nombre_archivo, index=False, encoding='utf-8-sig')
-    print(f"Archivo guardado en: {nombre_archivo}")
-except Exception as e:
-    print(f"Error al guardar el archivo: {e}")
-
-# Cerrar el navegador al finalizar
-driver.quit()
-
+if __name__ == "__main__":
+    # Código para pruebas unitarias
+    buscar_hoteles_por_ciudad()
