@@ -121,6 +121,11 @@ def run_scraper(
         if not check_in or not check_out:
             logger.error("❌ Este scraper requiere fechas check_in y check_out")
             raise ValueError("Fechas requeridas para este scraper")
+
+        if isinstance(check_in, str) or isinstance(check_out, str):
+            # Convertir strings a objetos datetime
+            check_in = datetime.strptime(check_in, '%Y-%m-%d')
+            check_out = datetime.strptime(check_out, '%Y-%m-%d')
         logger.info(f"📅 Rango: {check_in.strftime('%Y-%m-%d')} → {check_out.strftime('%Y-%m-%d')}")
 
     driver = None

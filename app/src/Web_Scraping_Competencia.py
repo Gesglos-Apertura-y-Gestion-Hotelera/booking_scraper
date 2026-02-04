@@ -33,9 +33,6 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
         """Ejecuta scraping para todos los competidores"""
         checkin = datetime.now().strftime('%Y-%m-%d')
         checkout = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
-        #
-        # checkin = (datetime.now() + timedelta(days=60)).strftime('%Y-%m-%d')
-        # checkout = (datetime.now() + timedelta(days=61)).strftime('%Y-%m-%d')
 
         logger.info(f"📅 Check-in: {checkin} | Check-out: {checkout}")
 
@@ -57,7 +54,7 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
 
             # Construir búsqueda: "Nombre Competidor Ciudad"
             competidor_ciudad = f"{competidor} - {ciudad}"
-            # competidor_ciudad = re.sub(r"\s{1,10}", "+", competidor_ciudad)
+            competidor_ciudad = re.sub(r"\s{1,10}", "+", competidor_ciudad)
 
             url = self.build_search_url(competidor_ciudad, checkin, checkout)
             logger.info(f"🔍 URL: {url}")
@@ -67,6 +64,7 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
             self.close_popup()
             time.sleep(2)
 
+            rating_details = None
             try:
                 nombre = self.extract_name()
                 precio = self.extract_price()
@@ -83,7 +81,7 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
             }
             cleaner = DataCleaner()
             divisa, precio = cleaner.limpiar_precio(precio)
-            print(f"divisa = {divisa} precio= {precio}")
+
             results.append({
                 'hotel': nombre,
                 'precio': precio,
@@ -98,12 +96,6 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
             })
 
             logger.info(f"✅  rating_details {rating_details} ")
-        import pprint as pp
-        print("results:\n")
-        pp.pprint(results)
-        print("\n\n")
-        print("rating details:\n")
-        pp.pprint(rating_details)
 
         return results
 
