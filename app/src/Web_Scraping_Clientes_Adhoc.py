@@ -58,10 +58,10 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                     continue
 
                 # Normalizar claves (mayúsculas o minúsculas)
-                Hotel = hotel_data.get('hotel') or hotel_data.get('Hotel') or ''
-                ciudad = hotel_data.get('ciudad') or hotel_data.get('Ciudad') or ''
+                Hotel = hotel_data.get('hotel', '')
+                ciudad = hotel_data.get('ciudad', '')
 
-                if not Hotel or not ciudad:
+                if Hotel == '' or ciudad == '':
                     logger.warning(f"⚠️ Datos incompletos: {hotel_data}")
                     continue
 

@@ -2,10 +2,12 @@
 Clase base para scrapers de Booking.com
 """
 import json
+import re
 import time
-from typing import List
 from abc import ABC, abstractmethod
+from typing import List, Dict
 
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -323,6 +325,223 @@ class BookingBaseScraper(ABC):
                 'calificacion_cualitativa': "No disponible",
                 'comentarios': "0"
             }
+
+    def extract_hotels_from_city(self, ciudad: str, checkin: str, checkout: str) -> List[Dict]:
+        """
+        Extrae información de todos los hoteles disponibles en una ciudad
+
+        Args:
+            ciudad: Nombre de la ciudad
+            checkin: Fecha de check-in
+            checkout: Fecha de check-out
+
+        Returns:
+            Lista de diccionarios con información de hoteles
+        """
+        logger.info(f"🏨 Procesando ciudad: {ciudad}")
+
+        url = self.build_city_search_url(ciudad, checkin, checkout)
+        logger.info(f"URL: {url}")
+
+        hotels_data = []
+
+        try:
+            # Cargar página
+            self.driver.get(url)
+            time.sleep(5)
+
+            # Cerrar popup si aparece
+            self.close_popup()
+            time.sleep(2)
+
+            # Buscar todos los elementos de hoteles
+            hotels_elements = self.driver.find_elements(
+                By.XPATH,
+                '//div[@data-testid="property-card"]'
+            )
+
+            if not hotels_elements:
+                logger.warning(f"⚠️ No se encontraron hoteles para {ciudad}")
+                return hotels_data
+
+            logger.info(f"📊 Encontrados {len(hotels_elements)} hoteles en {ciudad}")
+
+            # Extraer información de cada hotel
+            for hotel_element in hotels_elements:
+                hotel_info = self._extract_hotel_info(hotel_element, ciudad, checkin, checkout)
+                if hotel_info:
+                    hotels_data.append(hotel_info)
+
+            logger.info(f"✅ {ciudad}: {len(hotels_data)} hoteles procesados")
+
+        except Exception as e:
+            logger.error(f"❌ Error procesando {ciudad}: {e}")
+
+        return hotels_data
+
+    def _extract_reviews_count(self, hotel_element) -> str:
+        """
+        Extrae el número de comentarios usando múltiples estrategias
+
+        Args:
+            hotel_element: Elemento WebDriver del hotel
+
+        Returns:
+            Número de comentarios como string, "0" si no se encuentra
+        """
+        # Estrategia 1: Buscar en la estructura típica de review-score
+        try:
+            reviews_text = hotel_element.find_element(
+                By.XPATH,
+                './/div[@data-testid="review-score"]/div[2]/div[2]'
+            ).text
+
+            # Extraer número con regex (más robusto que split)
+            match = re.search(r'(\d+(?:\.\d+)?)', reviews_text)
+            if match:
+                return match.group(1)
+        except NoSuchElementException:
+            pass
+
+        # Estrategia 2: Buscar en toda la sección de review-score
+        try:
+            review_section = hotel_element.find_element(
+                By.XPATH,
+                './/div[@data-testid="review-score"]'
+            )
+
+            # Buscar texto que contenga "comentarios" o "opiniones"
+            review_text = review_section.text
+
+            # Regex para encontrar número antes de "comentarios" u "opiniones"
+            match = re.search(r'(\d+(?:\.\d+)?)\s*(?:comentarios|opiniones|reviews)',
+                              review_text, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        except NoSuchElementException:
+            pass
+
+        # Estrategia 3: Buscar cualquier elemento que contenga "comentarios"
+        try:
+            reviews_element = hotel_element.find_element(
+                By.XPATH,
+                './/*[contains(text(), "comentarios") or contains(text(), "opiniones")]'
+            )
+
+            reviews_text = reviews_element.text
+
+            # Extraer el número usando regex
+            match = re.search(r'(\d+(?:\.\d+)?)', reviews_text)
+            if match:
+                return match.group(1)
+        except NoSuchElementException:
+            pass
+
+        # Si ninguna estrategia funcionó, retornar "0"
+        logger.debug("No se pudieron extraer comentarios, retornando '0'")
+        return "0"
+
+    def _extract_hotel_info(
+            self,
+            hotel_element,
+            ciudad: str,
+            checkin: str,
+            checkout: str
+    ) -> Dict:
+        """
+        Extrae información de un elemento de hotel individual
+
+        Args:
+            hotel_element: Elemento WebDriver del hotel
+            ciudad: Nombre de la ciudad
+            checkin: Fecha de check-in
+            checkout: Fecha de check-out
+
+        Returns:
+            Diccionario con información del hotel
+        """
+        hotel_data = {}
+
+        # Nombre del hotel
+        try:
+            hotel_data['hotel'] = hotel_element.find_element(
+                By.XPATH,
+                './/div[@data-testid="title"]'
+            ).text
+        except NoSuchElementException:
+            hotel_data['hotel'] = "No disponible"
+
+        # Precio (intentar con descuento primero, luego precio base)
+        try:
+            precio_raw = hotel_element.find_element(
+                By.XPATH,
+                './/span[@data-testid="price-and-discounted-price"]'
+            ).text
+        except NoSuchElementException:
+            try:
+                precio_raw = hotel_element.find_element(
+                    By.XPATH,
+                    './/span[@data-testid="price"]'
+                ).text
+            except NoSuchElementException:
+                precio_raw = "0"
+
+        # Limpiar precio
+        cleaner = DataCleaner()
+        divisa, precio = cleaner.limpiar_precio(precio_raw)
+        hotel_data['divisa'] = divisa
+        hotel_data['precio'] = precio
+
+        # Puntuación numérica
+        try:
+            hotel_data['puntuacion'] = hotel_element.find_element(
+                By.XPATH,
+                './/div[@data-testid="review-score"]/div[1]'
+            ).text
+        except NoSuchElementException:
+            hotel_data['puntuacion'] = "No disponible"
+
+        # Reseña promedio (calificación cualitativa)
+        try:
+            hotel_data['review_promedio'] = hotel_element.find_element(
+                By.XPATH,
+                './/div[@data-testid="review-score"]/div[2]/div[1]'
+            ).text
+        except NoSuchElementException:
+            hotel_data['review_promedio'] = "No disponible"
+
+        # Número de comentarios - Estrategia robusta
+        hotel_data['comentarios'] = self._extract_reviews_count(hotel_element)
+
+        # Agregar información contextual
+        hotel_data['ciudad'] = ciudad
+        hotel_data['check_in'] = checkin
+        hotel_data['check_out'] = checkout
+
+        return hotel_data
+
+    def build_city_search_url(self, ciudad: str, checkin: str, checkout: str) -> str:
+        """
+        Construye URL de búsqueda para una ciudad específica
+
+        Args:
+            ciudad: Nombre de la ciudad
+            checkin: Fecha de check-in (YYYY-MM-DD)
+            checkout: Fecha de check-out (YYYY-MM-DD)
+
+        Returns:
+            URL completa de búsqueda
+        """
+        base_url = "https://www.booking.com/searchresults.es.html"
+        params = [
+            f"ss={ciudad}",
+            f"checkin={checkin}",
+            f"checkout={checkout}",
+            f"group_adults=2",
+            f"no_rooms=1",
+            f"group_children=0"
+        ]
+        return f"{base_url}?{'&'.join(params)}"
 
     @abstractmethod
     def run(self) -> List[dict]:
