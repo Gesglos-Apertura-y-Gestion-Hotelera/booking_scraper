@@ -4,24 +4,19 @@ import sys
 from typing import Tuple
 from datetime import datetime
 
-from .logger import logger
+def get_dates() -> Tuple[datetime, datetime]:
+    args = sys.argv[1:]
 
+    # 1. Obtener los valores (prioridad env, luego args)
+    check_in_raw = os.getenv('CHECK_IN', '')
+    if not check_in_raw:
+        check_in_raw = args[2]
 
-def get_dates()->Tuple[datetime,datetime]:
-    # Acepta 1 O MÁS parámetros
-    args = sys.argv[1:]  # Todos los parámetros
-    logger.info(f'Argumentos recibidos: {args}')
-    logger.info(f'Variables de entorno: SHEET_DATA={os.getenv("SHEET_DATA", "no definida")}')
+    check_out_raw = os.getenv('CHECK_OUT', '')
+    if not check_out_raw:
+        check_out_raw = args[3]
 
-    # Leer check_in y check_out de variables de entorno o argumentos
-    check_in = os.getenv('CHECK_IN', '')
-    if not check_in:
-        check_in = args[2]
-        check_in = datetime.strptime(check_in, '%Y-%m-%d')
-
-    check_out = os.getenv('CHECK_OUT', '')
-    if not check_out:
-        check_out = args[3]
-        check_out = datetime.strptime(check_out, '%Y-%m-%d')
+    check_in = datetime.strptime(check_in_raw, '%Y-%m-%d')
+    check_out = datetime.strptime(check_out_raw, '%Y-%m-%d')
 
     return check_in, check_out
