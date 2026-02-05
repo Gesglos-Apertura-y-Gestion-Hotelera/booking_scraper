@@ -61,7 +61,7 @@ SCRAPER_REGISTRY = {
         'class': 'BookingScraperPersonalizado',
         'requires_dates': True,
         'data_param': 'hoteles',
-        'sheet_name': 'clientes',
+        'sheet_name': 'lista_hoteles',
         'description': 'Scraping personalizado de Booking'
     }
 }

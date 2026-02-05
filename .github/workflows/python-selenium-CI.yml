@@ -1,25 +1,35 @@
 name: Selenium CI
 on: [push, pull_request]
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout código
-        uses: [actions/checkout](https://github.com)@v4
+        uses: actions/checkout@v4
 
       - name: Configurar Python
-        uses: [actions/setup-python](https://github.com)@v4
+        uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+
+      - name: Setup Chrome + Driver (Simple)
+        uses: browser-actions/setup-chrome@v2
+        with:
+          install-dependencies: true
 
       - name: Instalar dependencias
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install selenium pytest
+
+      - name: Ejecutar Tests
+        run: pytest
+        env:
+          PYTHONPATH: .
+          CHROME_BIN: /usr/bin/google-chrome
 
       - name: Ejecutar Tests (Headless)
         run: pytest
         env:
-          # Puedes pasar variables de entorno aquí si las necesitas
           CHROME_BIN: /usr/bin/google-chrome
+
