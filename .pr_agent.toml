@@ -3,11 +3,13 @@ response_language = "es-ES"
 ignore_files = ["*.lock", "package-lock.json", "dist/*"]
 
 [pr_reviewer]
-extra_instructions = "Por favor, verifica que todos los strings estén internacionalizados y que no haya secretos expuestos."
+extra_instructions = "Por favor, verifica que no haya secretos expuestos, permite emojis en los logs para ubicar mas rapido incidencias y revisa."
+require_score_review = false
+min_audit_complexity = 0
 
 [github_app]
 pr_commands = ["/describe", "/review", "/test",  "/analyze"]
 
 # Ejecutar cuando se suban nuevos commits
 handle_push_event = true
-push_commands = ["/review"]
+push_commands = ["/review", "/describe", "/test"]
