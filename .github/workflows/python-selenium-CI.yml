@@ -12,36 +12,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar dependencias Chrome
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            wget unzip curl gnupg \
-            fonts-liberation libappindicator3-1 \
-            libasound2t64 libnss3 libxss1 libatk-bridge2.0-0 \
-            libdrm2 libxcomposite1 libxdamage1 libxrandr2 \
-            libgbm1 libxkbcommon0 libatspi2.0-0 libgtk-3-0 \
-            xvfb x11vnc fluxbox dbus \
-            --no-install-recommends
-
-      - name: Instalar Chrome y ChromeDriver
-        run: |
-          # Repo Google Chrome oficial
-          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-      
-          sudo apt-get update -qq
-          sudo apt-get install -y google-chrome-stable --no-install-recommends || true
-      
-          # ChromeDriver matching
-          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+' | head -1)
-          CHROMEDRIVER_VERSION=$(curl -sS "chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION%.*}")
-          wget -q --continue -P . "https://storage.googleapis.com/chrome-for-testing-public/${CHROMEDRIVER_VERSION}/linux64/chromedriver-linux64.zip"
-          unzip -q chromedriver-linux64.zip
-          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
-          sudo chmod +x /usr/local/bin/chromedriver
-          rm -rf chromedriver-linux64*
-      
+      - name: Setup Chrome + Driver (Simple)
+        uses: browser-actions/setup-chrome@v2
+        with:
+          install-dependencies: true
 
       - name: Instalar dependencias
         run: |
