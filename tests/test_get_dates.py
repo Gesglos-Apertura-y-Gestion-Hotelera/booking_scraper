@@ -3,6 +3,8 @@ import sys
 import pytest
 from unittest.mock import patch
 import datetime
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from app.src.utils.get_dates import get_dates
 
 
