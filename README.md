@@ -120,5 +120,5 @@ poetry add aqui_va_la_libreria_nueva
 
 # actualizacion librerias en requirements.txt
 ```
-poetry export --without-hashes -f requirements.txt --output requirements.txt
+poetry export --without-hashes -f requirements.txt | sed 's/ ; .*//' > requirements.txt
 ```

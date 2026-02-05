@@ -3,7 +3,18 @@ response_language = "es-ES"
 ignore_files = ["*.lock", "package-lock.json", "dist/*"]
 
 [pr_reviewer]
-extra_instructions = "Por favor, verifica que no haya secretos expuestos, permite emojis en los logs para ubicar mas rapido incidencias y revisa."
+extra_instructions = """Por favor,
+- verifica que no haya secretos expuestos, permite emojis en los logs para ubicar mas rapido incidencias y revisa.
+- Revisa siempre si los cambios en los imports en 'tests/' coinciden con la estructura de carpetas.
+- Si se añaden nuevos módulos, verifica que el workflow de GitHub Actions tenga el PYTHONPATH configurado.
+- Verifica que cada nueva carpeta dentro de 'app/' incluya un archivo '__init__.py'.
+- Asegúrate de que los tests de Selenium utilicen el modo '--headless' y '--no-sandbox'.
+- Prioriza el uso de 'patch.object' sobre 'patch' directo para simular 'sys.argv'.
+- Vigila que el archivo requirements.txt no contenga marcadores de plataforma (sys_platform) que rompan la build de
+    Docker en Linux.
+- Si se modifica el archivo requirements.txt, verifica que no contenga marcadores de 'sys_platform == win32' que puedan
+    abortar la instalación de dependencias en el contenedor Linux de Docker.
+"""
 require_score_review = false
 min_audit_complexity = 0
 
