@@ -22,6 +22,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install selenium pytest
 
+      - name: Ejecutar Tests
+        run: pytest
+        env:
+          PYTHONPATH: .
+          CHROME_BIN: /usr/bin/google-chrome
+
       - name: Ejecutar Tests (Headless)
         run: pytest
         env:
