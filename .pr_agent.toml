@@ -6,5 +6,8 @@ ignore_files = ["*.lock", "package-lock.json", "dist/*"]
 extra_instructions = "Por favor, verifica que todos los strings estén internacionalizados y que no haya secretos expuestos."
 
 [github_app]
-pr_commands = ["/describe", "/review", "/test",  "/analyze"] # Solo resumen y revisión básica
+pr_commands = ["/describe", "/review", "/test",  "/analyze"]
 
+# Ejecutar cuando se suban nuevos commits
+handle_push_event = true
+push_commands = ["/review"]
