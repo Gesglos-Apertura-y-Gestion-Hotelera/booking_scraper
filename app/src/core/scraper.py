@@ -1,11 +1,12 @@
 """
 Clase base para scrapers de Booking.com
+Versión optimizada - Elimina redundancias y consolida lógica común
 """
 import json
 import re
 import time
 from abc import ABC, abstractmethod
-from typing import List, Dict
+from typing import List, Dict, Optional, Tuple
 
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -20,41 +21,138 @@ class BookingBaseScraper(ABC):
     """Clase base abstracta para scrapers de Booking"""
 
     BOOKING_BASE_URL = 'https://www.booking.com'
+    
+    # Palabras clave para calificaciones cualitativas
+    QUALITATIVE_KEYWORDS = [
+        'Fantástico', 'Excelente', 'Muy bueno', 'Bueno', 'Agradable',
+        'Fabuloso', 'Excepcional', 'Sobresaliente'
+    ]
 
     def __init__(self, driver: WebDriver):
         self.driver = driver
+        self.cleaner = DataCleaner()
 
-    def search_hotel(self, hotel_data: HotelSearchData, checkin: str, checkout: str) -> HotelResult:
+    # ============================================================
+    # MéthodoS GENÉRICOS DE EXTRACCIÓN (CORE)
+    # ============================================================
+
+    def _try_extract(
+        self, 
+        element_or_driver,
+        selectors: List[Tuple[str, str]],
+        extract_fn=None,
+        default: str = ""
+    ) -> str:
         """
-        Busca un hotel y extrae información
-        Template Method Pattern
+        Méthodo genérico para intentar extraer con múltiples selectores
+        
+        Args:
+            element_or_driver: WebElement o WebDriver
+            selectors: Lista de tuplas (selector, Méthodo) donde Méthodo es 'CSS', 'XPATH', etc.
+            extract_fn: Función opcional para procesar el texto extraído
+            default: Valor por defecto si ningún selector funciona
+            
+        Returns:
+            Texto extraído o valor por defecto
+            
+        Example:
+            selectors = [
+                ('[data-testid="price"]', 'CSS'),
+                ('//span[@data-testid="price-alternative"]', 'XPATH')
+            ]
         """
-        url = self.build_search_url(hotel_data.hotel, checkin, checkout)
-        logger.info(f"🔍 {hotel_data.hotel} ({checkin} → {checkout})")
+        for selector, method in selectors:
+            try:
+                if method == 'CSS':
+                    elem = element_or_driver.find_element(By.CSS_SELECTOR, selector)
+                elif method == 'XPATH':
+                    elem = element_or_driver.find_element(By.XPATH, selector)
+                else:
+                    continue
+                
+                text = elem.text.strip()
+                
+                # Aplicar función de procesamiento si existe
+                if extract_fn:
+                    result = extract_fn(text)
+                    if result:
+                        return result
+                elif text:
+                    return text
+                    
+            except NoSuchElementException:
+                continue
+        
+        return default
 
-        self.driver.get(url)
-        time.sleep(5)
+    def _extract_with_regex(
+        self,
+        element_or_driver,
+        selectors: List[Tuple[str, str]],
+        regex_pattern: str,
+        group: int = 1,
+        default: str = ""
+    ) -> str:
+        """
+        Extrae usando selectores + regex
+        
+        Args:
+            element_or_driver: WebElement o WebDriver
+            selectors: Lista de tuplas (selector, Méthodo)
+            regex_pattern: Patrón regex para extraer
+            group: Grupo de captura a retornar
+            default: Valor por defecto
+            
+        Returns:
+            Texto extraído o valor por defecto
+        """
+        def extract_fn(text):
+            match = re.search(regex_pattern, text, re.IGNORECASE)
+            return match.group(group) if match else None
+        
+        return self._try_extract(element_or_driver, selectors, extract_fn, default)
 
-        self.close_popup()
-        time.sleep(2)
+    # ============================================================
+    # NAVEGACIÓN Y URL
+    # ============================================================
 
-        return self.extract_hotel_data(hotel_data, checkin, checkout)
+    def build_search_url(self, search_term: str, checkin: str, checkout: str) -> str:
+        """
+        Construye URL de búsqueda (versión completa con parámetros de moneda)
+        
+        Args:
+            search_term: Hotel o ciudad
+            checkin: Fecha YYYY-MM-DD
+            checkout: Fecha YYYY-MM-DD
+            
+        Returns:
+            URL completa
+        """
+        params = {
+            'ss': search_term,
+            'checkin': checkin,
+            'checkout': checkout,
+            'group_adults': '2',
+            'no_rooms': '1',
+            'group_children': '0',
+            'selected_currency': 'COP',
+            'changed_currency': '1',
+            'top_currency': '1'
+        }
+        param_string = '&'.join(f'{k}={v}' for k, v in params.items())
+        return f'{self.BOOKING_BASE_URL}/searchresults.es.html?{param_string}'
 
-    def build_search_url(self, hotel: str, checkin: str, checkout: str) -> str:
-        """Construye URL de búsqueda"""
-        url = (
-            f'{self.BOOKING_BASE_URL}/searchresults.es.html?'
-            f'ss={hotel}'
-            f'&checkin={checkin}'
-            f'&checkout={checkout}'
-            f'&group_adults=2'
-            f'&no_rooms=1'
-            f'&group_children=0'
-            f'&selected_currency=COP'
-            f'&changed_currency=1'
-            f'&top_currency=1'
-        )
-        return url
+    def build_city_search_url(self, ciudad: str, checkin: str, checkout: str) -> str:
+        """Versión simplificada para búsqueda por ciudad"""
+        params = [
+            f"ss={ciudad}",
+            f"checkin={checkin}",
+            f"checkout={checkout}",
+            f"group_adults=2",
+            f"no_rooms=1",
+            f"group_children=0"
+        ]
+        return f"{self.BOOKING_BASE_URL}/searchresults.es.html?{'&'.join(params)}"
 
     def close_popup(self):
         """Cierra popup de login si existe"""
@@ -65,19 +163,42 @@ class BookingBaseScraper(ABC):
             )
             button.click()
             time.sleep(2)
-            logger.debug("Popup cerrado")
+            logger.debug("✓ Popup cerrado")
         except Exception:
-            pass  # No hay popup
+            pass
 
-    def extract_hotel_data(self, hotel_data: HotelSearchData, checkin: str, checkout: str) -> HotelResult:
-        """Extrae datos del hotel de la página"""
+    # ============================================================
+    # EXTRACCIÓN DE PÁGINA INDIVIDUAL DE HOTEL
+    # ============================================================
+
+    def search_hotel(self, hotel_data: HotelSearchData, checkin: str, checkout: str) -> HotelResult:
+        """
+        Busca un hotel específico y extrae información
+        Template Method Pattern
+        """
+        url = self.build_search_url(hotel_data.hotel, checkin, checkout)
+        logger.info(f"🔍 {hotel_data.hotel} ({checkin} → {checkout})")
+
+        self.driver.get(url)
+        time.sleep(5)
+        self.close_popup()
+        time.sleep(2)
+
+        return self.extract_hotel_data(hotel_data, checkin, checkout)
+
+    def extract_hotel_data(
+        self, 
+        hotel_data: HotelSearchData, 
+        checkin: str, 
+        checkout: str
+    ) -> HotelResult:
+        """Extrae datos del hotel de la página de resultados"""
         try:
             nombre = self.extract_name()
             precio = self.extract_price()
             calificacion = self.extract_rating()
-            logger.info(f"hotel::  {nombre}\n precio:  {precio}\n calificacion:  {calificacion}")
         except Exception as e:
-            logger.warning(f"⚠️ Error extrayendo: {e}")
+            logger.warning(f"⚠️ Error: {e}")
             nombre = hotel_data.hotel
             precio = "0"
             calificacion = "No disponible"
@@ -93,457 +214,464 @@ class BookingBaseScraper(ABC):
 
     def extract_name(self) -> str:
         """Extrae nombre del hotel"""
-        return self.driver.find_element(
-            By.CSS_SELECTOR, '[data-testid="title"]'
-        ).text
+        return self.driver.find_element(By.CSS_SELECTOR, '[data-testid="title"]').text
 
     def extract_price(self) -> str:
-        """Extrae precio con prioridades"""
-        # Precio "Desde"
-        try:
-            element = self.driver.find_element(
-                By.CSS_SELECTOR, 'div.abf093bdfe.fc23698243'
-            )
-            return element.text.replace("Desde ", "").strip()
-        except Exception:
-            logger.info(f"1 falló extraccion de precio")
-            pass
+        """Extrae precio de página individual con múltiples estrategias"""
+        selectors = [
+            ('div.abf093bdfe.fc23698243', 'CSS'),
+            ('div.fff1944c52.e1ca2942a5', 'CSS'),
+            ('//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
+            ('[data-testid="price"]', 'CSS'),
+            ('.//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
+            ('.//span[@data-testid="price-alternative"]', 'XPATH'),
+            ('.//span[@data-testid="price"]', 'XPATH'),
+        ]
         
+        def clean_price(text):
+            return text.replace("Desde ", "").replace(".", "").strip() if text else None
+        
+        result = self._try_extract(self.driver, selectors, clean_price, "0")
+        logger.info(f"Precio extraído: {result}")
+        import pprint as pp
+        print(f"result precio extraido   {pp.pformat(result)}")
+
+        return result
+
+
+
+    def extract_rating(self) -> str:
+        """Extrae calificación (compatibilidad - usa extract_rating_details)"""
+        return self.extract_rating_details().get('calificacion_cualitativa', 'No disponible')
+
+    def extract_rating_details(self) -> Dict[str, str]:
+        """Extrae puntuación, calificación cualitativa y comentarios"""
         try:
-            element = self.driver.find_element(
-                By.CSS_SELECTOR, 'div.fff1944c52.e1ca2942a5'
-            )
-            element = element.text.replace("Desde ", "").strip()
-            return element.text.replace(".", "").strip()
-        except Exception:
-            logger.info(f"2 falló extraccion de precio")
-            pass
-
-        # Precio con descuento
-        try:
-            element = self.driver.find_element(
-                By.XPATH, '//span[@data-testid="price-and-discounted-price"]'
-            )
-            return element.text.strip()
-        except Exception:
-            logger.info(f"3 falló extraccion de precio")
-            pass
-
-        # Precio base
-        try:
-            element = self.driver.find_element(
-                By.CSS_SELECTOR, '[data-testid="price"]'
-            )
-            return element.text.strip()
-        except Exception:
-            logger.info(f"4 falló extraccion de precio")
-            return "0"
-
-    def extract_puntuacion(self) -> str:
-        """
-        Extrae la puntuación numérica del hotel.
-
-        Returns:
-            str: Puntuación (ej: "9,9") o "No disponible"
-        """
-        import re
-
-        try:
-            puntuacion_element = self.driver.find_element(
-                By.CSS_SELECTOR,
-                'div.bc946a29db'
-            )
-            puntuacion_text = puntuacion_element.text
-            logger.info(f"1 ⚠️ ⚠️ ⚠️puntuacion: {puntuacion_text}")
-            # Extraer solo el número (ej: "Puntuación: 9,9" -> "9,9")
-            puntuacion_match = re.search(r'(\d+[.,]\d+)', puntuacion_text)
-            if puntuacion_match:
-                puntuacion = puntuacion_match.group(1)
-                logger.debug(f"Puntuación extraída: {puntuacion}")
-                return puntuacion
-
-        except Exception as e:
-            logger.debug(f"No se pudo extraer puntuación: {e}")
-
-        try:
-            puntuacion_element = self.driver.find_element(
-                By.CSS_SELECTOR,
-                'div.f63b14ab7a.dff2e52086'
-
-            )
-            puntuacion_text = puntuacion_element.text
-            logger.info(f"2 ⚠️ ⚠️ ⚠️puntuacion: {puntuacion_text}")
-            # Extraer solo el número (ej: "Puntuación: 9,9" -> "9,9")
-            puntuacion_match = re.search(r'(\d+[.,]\d+)', puntuacion_text)
-            if puntuacion_match:
-                puntuacion = puntuacion_match.group(1)
-                logger.debug(f"Puntuación extraída: {puntuacion}")
-                return puntuacion
-
-        except Exception as e:
-            logger.debug(f"No se pudo extraer puntuación: {e}")
-            return "No disponible"
-
-    def extract_calificacion_cualitativa(self) -> str:
-        """
-        Extrae la calificación cualitativa del hotel.
-
-        Returns:
-            str: Calificación (ej: "Fantástico", "Excelente") o "No disponible"
-        """
-        import re
-
-        # Opción 1: Selector directo por texto exacto
-        try:
-            calificacion_element = self.driver.find_element(
-                By.XPATH,
-                "//div[contains(text(), 'Fantástico') or contains(text(), 'Excelente') or "
-                "contains(text(), 'Muy bueno') or contains(text(), 'Bueno') or "
-                "contains(text(), 'Agradable')]"
-            )
-
-            calificacion = calificacion_element.text.strip()
-            if calificacion is not None:
-
-                calificacion_match = re.search(r"(\w+\S\w+)\:", calificacion, re.IGNORECASE)
-                calificacion_str = calificacion_match.group(1)
-                cleaner = DataCleaner()
-                calificacion = cleaner.quitar_tildes(calificacion_str)
-                logger.info(f"1 ⚠️ ⚠️️ ⚠️ calificacion: {calificacion}")
-                logger.debug(f"Calificación cualitativa extraída: {calificacion}")
-                return calificacion
-        except Exception as e:
-            logger.error(f"ERROR: extraer calificacion ha fallado {e}")
-            pass
-
-        # Opción 2: Por clases parciales conocidas
-        try:
-            calificacion_element = self.driver.find_element(
-                By.CSS_SELECTOR,
-                'div.f63b14ab7a.f546354b44'
-            )
-            calificacion = calificacion_element.text.strip()
-            logger.info(f"2 ⚠️️ ⚠️ ⚠️ calificacion: {calificacion}")
-            logger.debug(f"Calificación por clases parciales: {calificacion}")
-            if calificacion is not None:
-                return calificacion
-        except Exception:
-            pass
-
-        # Opción 2.5: Por clases parciales conocidas
-        try:
-            calificacion_element = self.driver.find_element(
-                By.CSS_SELECTOR,
-                'div[class="f63b14ab7a f546354b44 becbee2f63"]'
-            )
-            calificacion = calificacion_element.text.strip()
-            logger.info(f"3 ⚠️ ⚠️ ⚠️ calificacion: {calificacion}")
-            logger.debug(f"Calificación por clases parciales: {calificacion}")
-            if calificacion is not None:
-                return calificacion
-        except Exception:
-            pass
-
-        # Opción 3: Fallback con regex en page_source
-        try:
-            cualitativa_match = re.search(
-                r'\b(Fantástico|Excelente|Muy\s+bueno|Bueno|Agradable|Fabuloso|Excepcional|Sobresaliente)\b',
-                self.driver.page_source,
-                re.IGNORECASE
-            )
-            if cualitativa_match:
-                calificacion = cualitativa_match.group(1)
-                logger.debug(f"4️ ⚠️️ ⚠️️ ⚠️ Calificación por regex: {calificacion}")
-                return calificacion
-        except Exception:
-            pass
-
-        logger.debug("No se encontró calificación cualitativa")
-        return "No disponible"
-
-    def extract_comentarios(self) -> str:
-        """
-        Extrae el número de comentarios/reviews del hotel.
-
-        Returns:
-            str: Número de comentarios (ej: "102") o "0"
-        """
-        import re
-        try:
-            comentarios_matches = self.driver.find_element(
-                By.CSS_SELECTOR,
-                'div[class="fff1944c52 fb14de7f14 eaa8455879"]'
-            )
-            comentarios = comentarios_matches.text.strip()
-            comentarios.replace("comentarios", "")
-            comentarios = re.sub(r"\s*comentarios", "", comentarios)
-            comentarios = re.sub(r'[.,]', '', comentarios)
-            logger.info(f"3 ⚠️ ⚠️ ⚠️ Coments: {comentarios}")
-            logger.debug(f"coments por clases parciales: {comentarios}")
-            if comentarios is not None:
-                return comentarios
-        except Exception:
-            pass
-
-        try:
-            comentarios_matches = re.findall(
-                r'\b(\d{1,3}(?:[.,]\d{3})*|\d{1,6})\s*comentarios?\b',
-                self.driver.page_source,
-                re.IGNORECASE
-            )
-            if comentarios_matches and len(comentarios_matches) > 1:
-                comentarios_raw = comentarios_matches[1]  # Segunda coincidencia
-                comentarios = re.sub(r'[.,]', '', comentarios_raw)
-                logger.debug(f"Comentarios extraídos (2da match): {comentarios}")
-                if comentarios is not None:
-                    return comentarios
-        except Exception as e:
-            logger.debug(f"No se pudieron extraer comentarios: {e}")
-
-        return "0"
-
-    def extract_rating_details(self) -> dict:
-        """
-        Extrae detalles completos de calificación del hotel.
-        Orquesta las 3 funciones de extracción específicas.
-
-        Returns:
-            dict con 'puntuacion', 'calificacion_cualitativa', 'comentarios'
-        """
-        try:
-            returned = {
+            return {
                 'puntuacion': self.extract_puntuacion(),
                 'calificacion_cualitativa': self.extract_calificacion_cualitativa(),
                 'comentarios': self.extract_comentarios()
             }
-            logger.info(f"extract_rating_details: {json.dumps(returned)}")
-            return returned
         except Exception as e:
-            logger.warning(f"⚠️ Error extrayendo rating: {e}")
+            logger.warning(f"⚠️ Error en rating details: {e}")
             return {
                 'puntuacion': "No disponible",
                 'calificacion_cualitativa': "No disponible",
                 'comentarios': "0"
             }
 
-    def extract_hotels_from_city(self, ciudad: str, checkin: str, checkout: str) -> List[Dict]:
+    def extract_puntuacion(self) -> str:
         """
-        Extrae información de todos los hoteles disponibles en una ciudad
-
-        Args:
-            ciudad: Nombre de la ciudad
-            checkin: Fecha de check-in
-            checkout: Fecha de check-out
-
-        Returns:
-            Lista de diccionarios con información de hoteles
+        Extrae puntuación numérica con estrategias robustas
+        Basado en análisis de HTML real de Booking.com
         """
-        logger.info(f"🏨 Procesando ciudad: {ciudad}")
 
-        url = self.build_city_search_url(ciudad, checkin, checkout)
-        logger.info(f"URL: {url}")
-
-        hotels_data = []
-
+        # ESTRATEGIA 1: Por data-testid (más estable)
         try:
-            # Cargar página
-            self.driver.get(url)
-            time.sleep(5)
-
-            # Cerrar popup si aparece
-            self.close_popup()
-            time.sleep(2)
-
-            # Buscar todos los elementos de hoteles
-            hotels_elements = self.driver.find_elements(
-                By.XPATH,
-                '//div[@data-testid="property-card"]'
-            )
-
-            if not hotels_elements:
-                logger.warning(f"⚠️ No se encontraron hoteles para {ciudad}")
-                return hotels_data
-
-            logger.info(f"📊 Encontrados {len(hotels_elements)} hoteles en {ciudad}")
-
-            # Extraer información de cada hotel
-            for hotel_element in hotels_elements:
-                hotel_info = self._extract_hotel_info(hotel_element, ciudad, checkin, checkout)
-                if hotel_info:
-                    hotels_data.append(hotel_info)
-
-            logger.info(f"✅ {ciudad}: {len(hotels_data)} hoteles procesados")
-
-        except Exception as e:
-            logger.error(f"❌ Error procesando {ciudad}: {e}")
-
-        return hotels_data
-
-    def _extract_reviews_count(self, hotel_element) -> str:
-        """
-        Extrae el número de comentarios usando múltiples estrategias
-
-        Args:
-            hotel_element: Elemento WebDriver del hotel
-
-        Returns:
-            Número de comentarios como string, "0" si no se encuentra
-        """
-        # Estrategia 1: Buscar en la estructura típica de review-score
-        try:
-            reviews_text = hotel_element.find_element(
-                By.XPATH,
-                './/div[@data-testid="review-score"]/div[2]/div[2]'
-            ).text
-
-            # Extraer número con regex (más robusto que split)
-            match = re.search(r'(\d+(?:\.\d+)?)', reviews_text)
-            if match:
-                return match.group(1)
-        except NoSuchElementException:
-            pass
-
-        # Estrategia 2: Buscar en toda la sección de review-score
-        try:
-            review_section = hotel_element.find_element(
+            score_section = self.driver.find_element(
                 By.XPATH,
                 './/div[@data-testid="review-score"]'
             )
-
-            # Buscar texto que contenga "comentarios" o "opiniones"
-            review_text = review_section.text
-
-            # Regex para encontrar número antes de "comentarios" u "opiniones"
-            match = re.search(r'(\d+(?:\.\d+)?)\s*(?:comentarios|opiniones|reviews)',
-                              review_text, re.IGNORECASE)
+            score_element = score_section.find_element(By.XPATH, './div[1]')
+            text = score_element.text.strip()
+            match = re.search(r'(\d+[.,]\d+)', text)
             if match:
-                return match.group(1)
+                score = match.group(1)
+                logger.debug(f"✓ Puntuación por data-testid: {score}")
+                return score
         except NoSuchElementException:
             pass
-
-        # Estrategia 3: Buscar cualquier elemento que contenga "comentarios"
+        
+        # ESTRATEGIA 2: Por clases CSS conocidas (incluyendo variantes observadas)
+        selectors = [
+            ('div.bc946a29db', 'CSS'),
+            ('div.f63b14ab7a.dff2e52086', 'CSS'),
+            ('div.f6e3a11b0d.c46553d73.ab1870d302', 'CSS'),  # De HTML real
+            ('div.bc946a29db.a57c0fa20a.c963f481bb', 'CSS'),  # Variante común
+            ('div[class*="bc946a29db"]', 'CSS'),              # Partial match
+            ('div[class*="f63b14ab7a"]', 'CSS'),              # Partial match
+        ]
+        result = self._extract_with_regex(
+            self.driver, 
+            selectors, 
+            r'(\d+[.,]\d+)',
+            default=None
+        )
+        if result:
+            logger.debug(f"✓ Puntuación por CSS: {result}")
+            return result
+        
+        # ESTRATEGIA 3: Por aria-label
         try:
-            reviews_element = hotel_element.find_element(
+            elements = self.driver.find_elements(
                 By.XPATH,
-                './/*[contains(text(), "comentarios") or contains(text(), "opiniones")]'
+                './/*[contains(@aria-label, "Puntuación") or contains(@aria-label, "puntuación")]'
             )
-
-            reviews_text = reviews_element.text
-
-            # Extraer el número usando regex
-            match = re.search(r'(\d+(?:\.\d+)?)', reviews_text)
-            if match:
-                return match.group(1)
-        except NoSuchElementException:
+            for element in elements:
+                aria_label = element.get_attribute('aria-label')
+                if aria_label:
+                    match = re.search(r'(\d+[.,]\d+)', aria_label)
+                    if match:
+                        score = match.group(1)
+                        logger.debug(f"✓ Puntuación por aria-label: {score}")
+                        return score
+        except Exception:
             pass
+        
+        # ESTRATEGIA 4: Buscar divs que contengan SOLO un número decimal
+        try:
+            divs = self.driver.find_elements(
+                By.XPATH,
+                './/div[@data-testid="review-score"]//div'
+            )
+            for div in divs:
+                text = div.text.strip()
+                if re.match(r'^\d+[.,]\d+$', text):
+                    logger.debug(f"✓ Puntuación exacta en div: {text}")
+                    return text
+        except Exception:
+            pass
+        
+        # ESTRATEGIA 5: Regex en page_source (último recurso)
+        try:
+            patterns = [
+                r'"reviewScore[Value]?"[:\s]*(\d+[.,]\d+)',
+                r'data-score[=\s]+"(\d+[.,]\d+)"',
+                r'[Pp]untuaci[óo]n[:\s]+(\d+[.,]\d+)',
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, self.driver.page_source, re.IGNORECASE)
+                if match:
+                    score = match.group(1)
+                    logger.debug(f"✓ Puntuación por regex en HTML: {score}")
+                    return score
+        except Exception:
+            pass
+        
+        logger.warning("⚠️ No se pudo extraer puntuación")
+        return "No disponible"
 
-        # Si ninguna estrategia funcionó, retornar "0"
-        logger.debug("No se pudieron extraer comentarios, retornando '0'")
+    def extract_calificacion_cualitativa(self) -> str:
+        """Extrae calificación cualitativa"""
+        # Estrategia 1: Por texto con palabras clave
+        keywords_xpath = " or ".join([f"contains(text(), '{kw}')" for kw in self.QUALITATIVE_KEYWORDS])
+        text_selectors = [(f"//div[{keywords_xpath}]", 'XPATH')]
+        
+        result = self._extract_with_regex(
+            self.driver,
+            text_selectors,
+            r"(\w+\s*\w+)\s*:",
+            default=None
+        )
+        import pprint as pp
+        print(f"review score completo con extras {pp.pformat(result)}")
+        if result:
+            return self.cleaner.quitar_tildes(result)
+        
+        # Estrategia 2: Por clases CSS
+        class_selectors = [
+            ('div.f63b14ab7a.f546354b44', 'CSS'),
+            ('div[class="f63b14ab7a f546354b44 becbee2f63"]', 'CSS'),
+        ]
+        result = self._try_extract(self.driver, class_selectors, default=None)
+        if result:
+            return result
+        
+        # Estrategia 3: Regex en page_source
+        pattern = r'\b(' + '|'.join(self.QUALITATIVE_KEYWORDS) + r')\b'
+        match = re.search(pattern, self.driver.page_source, re.IGNORECASE)
+        return match.group(1) if match else "No disponible"
+
+    def extract_comentarios(self) -> str:
+        """Extrae número de comentarios de página individual"""
+        # Estrategia 1: Por clase CSS
+        selectors = [('div[class="fff1944c52 fb14de7f14 eaa8455879"]', 'CSS')]
+        
+        def clean_comments(text):
+            cleaned = re.sub(r'\s*comentarios?', '', text, flags=re.IGNORECASE)
+            cleaned = re.sub(r'[.,]', '', cleaned)
+            return cleaned if cleaned.isdigit() else None
+        
+        result = self._try_extract(self.driver, selectors, clean_comments, None)
+        if result:
+            return result
+        
+        # Estrategia 2: Regex en page_source
+        matches = re.findall(
+            r'\b(\d{1,3}(?:[.,]\d{3})*|\d{1,6})\s*comentarios?\b',
+            self.driver.page_source,
+            re.IGNORECASE
+        )
+        if matches and len(matches) > 1:
+            return re.sub(r'[.,]', '', matches[1])
+        
         return "0"
 
-    def _extract_hotel_info(
-            self,
-            hotel_element,
-            ciudad: str,
-            checkin: str,
-            checkout: str
+    # ============================================================
+    # EXTRACCIÓN DE LISTADOS (PROPERTY CARDS)
+    # ============================================================
+
+    def extract_hotels_from_city(
+        self, 
+        ciudad: str, 
+        checkin: str, 
+        checkout: str
+    ) -> List[Dict]:
+        """
+        Extrae todos los hoteles de una ciudad desde property-cards
+        
+        Args:
+            ciudad: Nombre de la ciudad
+            checkin: Fecha YYYY-MM-DD
+            checkout: Fecha YYYY-MM-DD
+            
+        Returns:
+            Lista de diccionarios con info de hoteles
+        """
+        logger.info(f"🏨 Procesando: {ciudad}")
+        url = self.build_city_search_url(ciudad, checkin, checkout)
+        
+        try:
+            self.driver.get(url)
+            time.sleep(5)
+            self.close_popup()
+            time.sleep(2)
+            
+            cards = self.driver.find_elements(By.XPATH, '//div[@data-testid="property-card"]')
+            
+            if not cards:
+                logger.warning(f"⚠️ No se encontraron hoteles en {ciudad}")
+                return []
+            
+            logger.info(f"📊 Encontrados {len(cards)} hoteles")
+            
+            hotels_data = []
+            for idx, card in enumerate(cards, 1):
+                try:
+                    hotel_info = self._extract_from_property_card(card, ciudad, checkin, checkout)
+                    if hotel_info:
+                        hotels_data.append(hotel_info)
+                        logger.debug(f"  [{idx}/{len(cards)}] ✓ {hotel_info.get('hotel', 'N/A')}")
+                except Exception as e:
+                    logger.warning(f"  [{idx}/{len(cards)}] ✗ {e}")
+            
+            logger.info(f"✅ {ciudad}: {len(hotels_data)} hoteles procesados")
+            return hotels_data
+            
+        except Exception as e:
+            logger.error(f"❌ Error en {ciudad}: {e}")
+            return []
+
+    def _extract_from_property_card(
+        self,
+        card,
+        ciudad: str,
+        checkin: str,
+        checkout: str
     ) -> Dict:
         """
-        Extrae información de un elemento de hotel individual
-
+        Extrae información de una property-card
+        Méthodo unificado que consolida toda la extracción
+        
         Args:
-            hotel_element: Elemento WebDriver del hotel
-            ciudad: Nombre de la ciudad
-            checkin: Fecha de check-in
-            checkout: Fecha de check-out
-
+            card: WebElement de la property-card
+            ciudad: Ciudad
+            checkin: Fecha entrada
+            checkout: Fecha salida
+            
         Returns:
-            Diccionario con información del hotel
+            Diccionario con datos del hotel
         """
-        hotel_data = {}
+        # Nombre
+        hotel_name = self._try_extract(
+            card,
+            [('.//div[@data-testid="title"]', 'XPATH')],
+            default="No disponible"
+        )
+        
+        # Precio (múltiples estrategias)
+        precio_raw = self._try_extract(
+            card,
+            [
+                ('.//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
+                ('.//span[@data-testid="price-alternative"]', 'XPATH'),
+                ('.//span[@data-testid="price"]', 'XPATH'),
+            ],
+            default="0"
+        )
+        divisa, precio = self.cleaner.limpiar_precio(precio_raw)
+        
+        # Puntuación - Estrategias mejoradas
+        puntuacion = self._extract_puntuacion_from_card(card)
+        
+        # Calificación cualitativa
+        review_promedio = self._try_extract(
+            card,
+            [('.//div[@data-testid="review-score"]/div[2]/div[1]', 'XPATH')],
+            default="No disponible"
+        )
+        
+        # Comentarios (con estrategias robustas)
+        comentarios = self._extract_reviews_from_card(card)
+        
+        return {
+            'hotel': hotel_name,
+            'divisa': divisa,
+            'precio': precio,
+            'puntuacion': puntuacion,
+            'review_promedio': review_promedio,
+            'comentarios': comentarios,
+            'ciudad': ciudad,
+            'check_in': checkin,
+            'check_out': checkout
+        }
 
-        # Nombre del hotel
+    def _extract_puntuacion_from_card(self, card) -> str:
+        """
+        Extrae puntuación de una property-card con múltiples estrategias
+        
+        Args:
+            card: WebElement de la property-card
+            
+        Returns:
+            Puntuación o "No disponible"
+        """
+        # ESTRATEGIA 1: Ruta estándar de data-testid
         try:
-            hotel_data['hotel'] = hotel_element.find_element(
-                By.XPATH,
-                './/div[@data-testid="title"]'
-            ).text
-        except NoSuchElementException:
-            hotel_data['hotel'] = "No disponible"
-
-        # Precio (intentar con descuento primero, luego precio base)
-        try:
-            precio_raw = hotel_element.find_element(
-                By.XPATH,
-                './/span[@data-testid="price-and-discounted-price"]'
-            ).text
-        except NoSuchElementException:
-            try:
-                precio_raw = hotel_element.find_element(
-                    By.XPATH,
-                    './/span[@data-testid="price"]'
-                ).text
-            except NoSuchElementException:
-                precio_raw = "0"
-
-        # Limpiar precio
-        cleaner = DataCleaner()
-        divisa, precio = cleaner.limpiar_precio(precio_raw)
-        hotel_data['divisa'] = divisa
-        hotel_data['precio'] = precio
-
-        # Puntuación numérica
-        try:
-            hotel_data['puntuacion'] = hotel_element.find_element(
+            score = card.find_element(
                 By.XPATH,
                 './/div[@data-testid="review-score"]/div[1]'
-            ).text
+            ).text.strip()
+            
+            if re.match(r'^\d+[.,]\d+$', score):
+                logger.debug(f"✓ Puntuación card (data-testid): {score}")
+                return score
         except NoSuchElementException:
-            hotel_data['puntuacion'] = "No disponible"
-
-        # Reseña promedio (calificación cualitativa)
-        try:
-            hotel_data['review_promedio'] = hotel_element.find_element(
-                By.XPATH,
-                './/div[@data-testid="review-score"]/div[2]/div[1]'
-            ).text
-        except NoSuchElementException:
-            hotel_data['review_promedio'] = "No disponible"
-
-        # Número de comentarios - Estrategia robusta
-        hotel_data['comentarios'] = self._extract_reviews_count(hotel_element)
-
-        # Agregar información contextual
-        hotel_data['ciudad'] = ciudad
-        hotel_data['check_in'] = checkin
-        hotel_data['check_out'] = checkout
-
-        return hotel_data
-
-    def build_city_search_url(self, ciudad: str, checkin: str, checkout: str) -> str:
-        """
-        Construye URL de búsqueda para una ciudad específica
-
-        Args:
-            ciudad: Nombre de la ciudad
-            checkin: Fecha de check-in (YYYY-MM-DD)
-            checkout: Fecha de check-out (YYYY-MM-DD)
-
-        Returns:
-            URL completa de búsqueda
-        """
-        base_url = "https://www.booking.com/searchresults.es.html"
-        params = [
-            f"ss={ciudad}",
-            f"checkin={checkin}",
-            f"checkout={checkout}",
-            f"group_adults=2",
-            f"no_rooms=1",
-            f"group_children=0"
+            pass
+        
+        # ESTRATEGIA 2: Por clases CSS (incluyendo variantes)
+        selectors = [
+            ('div.bc946a29db', 'CSS'),
+            ('div.f63b14ab7a.dff2e52086', 'CSS'),
+            ('div.f6e3a11b0d.c46553d73.ab1870d302', 'CSS'),
+            ('div[class*="bc946a29db"]', 'CSS'),
         ]
-        return f"{base_url}?{'&'.join(params)}"
+        result = self._extract_with_regex(
+            card,
+            selectors,
+            r'(\d+[.,]\d+)',
+            default=None
+        )
+        if result:
+            logger.debug(f"✓ Puntuación card (CSS): {result}")
+            return result
+        
+        # ESTRATEGIA 3: Buscar en TODOS los divs de review-score
+        try:
+            review_section = card.find_element(
+                By.XPATH,
+                './/div[@data-testid="review-score"]'
+            )
+            divs = review_section.find_elements(By.XPATH, './/div')
+            
+            for div in divs[:5]:  # Revisar los primeros 5 divs
+                text = div.text.strip()
+                # Buscar SOLO número decimal
+                if re.match(r'^\d+[.,]\d+$', text):
+                    logger.debug(f"✓ Puntuación card (div exacto): {text}")
+                    return text
+        except NoSuchElementException:
+            pass
+        
+        # ESTRATEGIA 4: Por aria-label
+        try:
+            elements = card.find_elements(
+                By.XPATH,
+                './/*[contains(@aria-label, "Puntuación") or contains(@aria-label, "puntuación")]'
+            )
+            for element in elements:
+                aria_label = element.get_attribute('aria-label')
+                if aria_label:
+                    match = re.search(r'(\d+[.,]\d+)', aria_label)
+                    if match:
+                        score = match.group(1)
+                        logger.debug(f"✓ Puntuación card (aria-label): {score}")
+                        return score
+        except Exception:
+            pass
+        
+        logger.debug("⚠️ No se pudo extraer puntuación de la card")
+        return "No disponible"
+
+    def _extract_reviews_from_card(self, card) -> str:
+        """
+        Extrae número de comentarios de una property-card
+        Méthodo consolidado con múltiples estrategias
+        
+        Args:
+            card: WebElement de la property-card
+            
+        Returns:
+            Número de comentarios o "0"
+        """
+        # Estrategia 1: Estructura típica
+        result = self._extract_with_regex(
+            card,
+            [('.//div[@data-testid="review-score"]/div[2]/div[2]', 'XPATH')],
+            r'(\d+(?:\.\d+)?)',
+            default=None
+        )
+        if result:
+            return result.replace('.', '')
+        
+        # Estrategia 2: Sección completa de review-score
+        result = self._extract_with_regex(
+            card,
+            [('.//div[@data-testid="review-score"]', 'XPATH')],
+            r'(\d+(?:\.\d+)?)\s*(?:comentarios|opiniones|reviews)',
+            default=None
+        )
+        if result:
+            return result.replace('.', '')
+        
+        # Estrategia 3: Cualquier elemento con "comentarios"
+        result = self._extract_with_regex(
+            card,
+            [('.//*[contains(text(), "comentarios") or contains(text(), "opiniones")]', 'XPATH')],
+            r'(\d+(?:\.\d+)?)',
+            default="0"
+        )
+        
+        return result.replace('.', '')
+
+    # ============================================================
+    # ALIAS PARA COMPATIBILIDAD
+    # ============================================================
+
+    def _extract_hotel_info(self, *args, **kwargs):
+        """Alias para compatibilidad con código existente"""
+        return self._extract_from_property_card(*args, **kwargs)
+    
+    def _extract_reviews_count(self, *args, **kwargs):
+        """Alias para compatibilidad con código existente"""
+        return self._extract_reviews_from_card(*args, **kwargs)
+    
+    def _extract_hotel_info_from_card(self, *args, **kwargs):
+        """Alias para mantener consistencia de nombres"""
+        return self._extract_from_property_card(*args, **kwargs)
+    
+    def _extract_reviews_count_from_card(self, *args, **kwargs):
+        """Alias para mantener consistencia de nombres"""
+        return self._extract_reviews_from_card(*args, **kwargs)
+
+    # ============================================================
+    # Méthodo ABSTRACTO
+    # ============================================================
 
     @abstractmethod
     def run(self) -> List[dict]:
-        """Método abstracto que cada scraper debe implementar"""
+        """
+        Méthodo abstracto que cada scraper debe implementar
+        Define el flujo de ejecución específico del scraper
+        """
         pass

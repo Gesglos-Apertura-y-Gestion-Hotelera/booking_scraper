@@ -82,16 +82,14 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                 try:
                     nombre = self.extract_name()
                     precio = self.extract_price()
+                    print(f"precio {precio}")
                     calificacion = self.extract_rating_details()
-                    import pprint as pp
-                    print("*******************")
-                    pp.pprint(precio)
                 except Exception as e:
                     logger.warning(f"⚠️ {Hotel} ({checkin_str}): {e}")
                     nombre = Hotel
                     precio = "0"
                     calificacion = "No disponible"
-
+                print(f"precio {precio}")
                 cleaner = DataCleaner()
                 divisa, precio = cleaner.limpiar_precio(precio)
                 results.append({
@@ -105,13 +103,11 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                     'check_in': checkin_str,
                     'check_out': checkout_str
                 })
-
-                logger.info(f"✅ {nombre} - {precio}")
-
+            import  pprint as pp
+            print(f"results: {pp.pprint(results)}")
             # Avanzar al siguiente día
             fecha_actual = siguiente_dia
-            logger.info(f"✅✅ pasando a la siguiente fecha: {fecha_actual}")
-        logger.info(f"results: {results}")
+            logger.info(f"✅ ✅ pasando a la siguiente fecha: {fecha_actual}")
         return results
 
 
