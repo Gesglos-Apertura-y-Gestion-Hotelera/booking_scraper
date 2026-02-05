@@ -21,7 +21,7 @@ SCRAPER_REGISTRY = {
         'class': 'ClientesDiarioScraper',
         'requires_dates': False,
         'data_param': 'hoteles',
-        'sheet_name': 'clientes',  # ← Nombre de la sheet en Google Sheets
+        'sheet_name': 'clientes',
         'description': 'Scraping diario de clientes (hoy)'
     },
     'clientes_prevision': {
@@ -29,7 +29,7 @@ SCRAPER_REGISTRY = {
         'class': 'ClientesDiarioScraperAdHoc',
         'requires_dates': True,
         'data_param': 'hoteles',
-        'sheet_name': 'clientes',  # ← Mismo sheet que clientes_diario
+        'sheet_name': 'clientes',
         'description': 'Scraping de clientes en rango de fechas'
     },
     'competencia_diario': {
@@ -37,7 +37,7 @@ SCRAPER_REGISTRY = {
         'class': 'CompetenciaDiarioScraper',
         'requires_dates': False,
         'data_param': 'competidores',
-        'sheet_name': 'competencia',  # ← Sheet de competencia
+        'sheet_name': 'competencia',
         'description': 'Scraping diario de competencia (hoy)'
     },
     'competencia_prevision': {
@@ -45,7 +45,7 @@ SCRAPER_REGISTRY = {
         'class': 'CompetenciaDiarioScraperAdHoc',
         'requires_dates': True,
         'data_param': 'competidores',
-        'sheet_name': 'competencia',  # ← Mismo sheet que competencia_diario
+        'sheet_name': 'competencia',
         'description': 'Scraping de competencia en rango de fechas'
     },
     'seguimiento_diario': {
@@ -53,15 +53,15 @@ SCRAPER_REGISTRY = {
         'class': 'DailyTrackingScraper',
         'requires_dates': False,
         'data_param': 'hoteles',
-        'sheet_name': 'ciudades',  # ← Sheet de ciudades
+        'sheet_name': 'ciudades',
         'description': 'Scraping de seguimiento diario'
     },
     'personalizado': {
-        'module': 'Web_Scryping_Booking',
+        'module': 'Web_Scraping_Booking',
         'class': 'BookingScraperPersonalizado',
         'requires_dates': True,
         'data_param': 'hoteles',
-        'sheet_name': 'cliente',  # ← Asumiendo que va a cliente
+        'sheet_name': 'clientes',
         'description': 'Scraping personalizado de Booking'
     }
 }

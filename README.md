@@ -110,4 +110,4 @@ seguimiento_diario
 ### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app seguimiento_diario '[{"hotel": "Porto Marina Hotel","competidor": "Hotel Bambu Guatape","ciudad": "Guatapé","buscar": "Hotel Bambu Guatape, Guatapé"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2026-04-01" "2026-04-05"
 
 personalizado
-
+### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app personalizado '[{"hotel": "Porto Marina Hotel","competidor": "Hotel Bambu Guatape","ciudad": "Guatapé","buscar": "Hotel Bambu Guatape, Guatapé"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2026-04-01" "2026-04-05"
