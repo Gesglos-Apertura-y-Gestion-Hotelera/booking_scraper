@@ -6,8 +6,10 @@ Lee datos de ciudades desde variable de entorno SHEET_DATA
 """
 import os
 import sys
+import time
+import re
 from datetime import datetime, timedelta
-from typing import List, Set
+from typing import List, Dict, Set
 
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
@@ -65,6 +67,7 @@ class DailyTrackingScraper(BookingBaseScraper):
         logger.info(f"📍 Ciudades: {', '.join(ciudades_lista)}")
 
         return ciudades_lista
+
 
     def run(self) -> list:
         """

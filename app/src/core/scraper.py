@@ -2,13 +2,14 @@
 Clase base para scrapers de Booking.com
 """
 import json
+import re
 import time
-from typing import List, Dict
 from abc import ABC, abstractmethod
+from typing import List, Dict
 
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.common.exceptions import NoSuchElementException
 
 from utils.cleaner import DataCleaner
 from utils.logger import logger
@@ -324,6 +325,7 @@ class BookingBaseScraper(ABC):
                 'calificacion_cualitativa': "No disponible",
                 'comentarios': "0"
             }
+
     def extract_hotels_from_city(self, ciudad: str, checkin: str, checkout: str) -> List[Dict]:
         """
         Extrae información de todos los hoteles disponibles en una ciudad
@@ -376,6 +378,68 @@ class BookingBaseScraper(ABC):
             logger.error(f"❌ Error procesando {ciudad}: {e}")
 
         return hotels_data
+
+    def _extract_reviews_count(self, hotel_element) -> str:
+        """
+        Extrae el número de comentarios usando múltiples estrategias
+
+        Args:
+            hotel_element: Elemento WebDriver del hotel
+
+        Returns:
+            Número de comentarios como string, "0" si no se encuentra
+        """
+        # Estrategia 1: Buscar en la estructura típica de review-score
+        try:
+            reviews_text = hotel_element.find_element(
+                By.XPATH,
+                './/div[@data-testid="review-score"]/div[2]/div[2]'
+            ).text
+
+            # Extraer número con regex (más robusto que split)
+            match = re.search(r'(\d+(?:\.\d+)?)', reviews_text)
+            if match:
+                return match.group(1)
+        except NoSuchElementException:
+            pass
+
+        # Estrategia 2: Buscar en toda la sección de review-score
+        try:
+            review_section = hotel_element.find_element(
+                By.XPATH,
+                './/div[@data-testid="review-score"]'
+            )
+
+            # Buscar texto que contenga "comentarios" o "opiniones"
+            review_text = review_section.text
+
+            # Regex para encontrar número antes de "comentarios" u "opiniones"
+            match = re.search(r'(\d+(?:\.\d+)?)\s*(?:comentarios|opiniones|reviews)',
+                              review_text, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        except NoSuchElementException:
+            pass
+
+        # Estrategia 3: Buscar cualquier elemento que contenga "comentarios"
+        try:
+            reviews_element = hotel_element.find_element(
+                By.XPATH,
+                './/*[contains(text(), "comentarios") or contains(text(), "opiniones")]'
+            )
+
+            reviews_text = reviews_element.text
+
+            # Extraer el número usando regex
+            match = re.search(r'(\d+(?:\.\d+)?)', reviews_text)
+            if match:
+                return match.group(1)
+        except NoSuchElementException:
+            pass
+
+        # Si ninguna estrategia funcionó, retornar "0"
+        logger.debug("No se pudieron extraer comentarios, retornando '0'")
+        return "0"
 
     def _extract_hotel_info(
             self,
@@ -446,25 +510,13 @@ class BookingBaseScraper(ABC):
         except NoSuchElementException:
             hotel_data['review_promedio'] = "No disponible"
 
-        # Número de opiniones
-        try:
-            reviews_text = hotel_element.find_element(
-                By.XPATH,
-                './/div.fff1944c52.fb14de7f14.eaa8455879'  #<div class="fff1944c52.fb14de7f14.eaa8455879">67 comentarios</div>
-            ).text
-            # Extraer solo el número (primera palabra)
-            hotel_data['comentarios'] = reviews_text.split()[0]
-        except (NoSuchElementException, IndexError):
-            hotel_data['comentarios'] = "0"
+        # Número de comentarios - Estrategia robusta
+        hotel_data['comentarios'] = self._extract_reviews_count(hotel_element)
 
         # Agregar información contextual
         hotel_data['ciudad'] = ciudad
         hotel_data['check_in'] = checkin
         hotel_data['check_out'] = checkout
-
-        import pprint as pp
-        print(f"hotel_data: {200*'*'}")
-        pp.pprint(hotel_data)
 
         return hotel_data
 
