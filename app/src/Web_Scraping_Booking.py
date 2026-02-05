@@ -16,9 +16,9 @@ from selenium.common.exceptions import NoSuchElementException
 from core.scraper import BookingBaseScraper
 from core.chrome_driver import ChromeDriverFactory
 from utils.cleaner import DataCleaner
-from utils.logger import logger
 from utils.enviar_sheets import enviar_sheets
 from utils.get_sheet_data import get_sheet_data
+from utils.logger import logger
 
 
 WEBAPP_URL = os.environ.get('WEBAPP_URL')
@@ -161,7 +161,7 @@ class BookingScraperPersonalizado(BookingBaseScraper):
             
             # Extraer información de cada hotel
             for hotel_element in hotels_elements:
-                hotel_info = self._extract_hotel_info_from_card(
+                hotel_info = self.extract_hotel_info_from_card(
                     hotel_element, 
                     ciudad, 
                     checkin_str, 
@@ -177,7 +177,7 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         
         return hotels_data
 
-    def _extract_hotel_info_from_card(
+    def extract_hotel_info_from_card(
         self, 
         hotel_element, 
         ciudad: str, 
@@ -218,19 +218,26 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         
         # Puntuación numérica
         try:
-            hotel_data['puntuacion'] = hotel_element.find_element(
+            puntuacion = hotel_element.find_element(
                 By.XPATH, 
                 './/div[@data-testid="review-score"]/div[1]'
             ).text
+            import re
+            puntuacion = re.findall(r'\d+[,.]?\d*', puntuacion)[0]
+
+
+            hotel_data['puntuacion'] = puntuacion
         except NoSuchElementException:
             hotel_data['puntuacion'] = "No disponible"
         
         # Reseña promedio (calificación cualitativa)
         try:
-            hotel_data['review_promedio'] = hotel_element.find_element(
+            review = hotel_element.find_element(
                 By.XPATH, 
                 './/div[@data-testid="review-score"]/div[2]/div[1]'
             ).text
+            logger.info(f"✅ ✅ ✅ ✅ ✅ ✅ Review: {review}")
+            hotel_data['review_promedio'] = review
         except NoSuchElementException:
             hotel_data['review_promedio'] = "No disponible"
         

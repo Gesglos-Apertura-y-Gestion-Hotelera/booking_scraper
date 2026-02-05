@@ -6,10 +6,8 @@ Lee datos de ciudades desde variable de entorno SHEET_DATA
 """
 import os
 import sys
-import time
-import re
 from datetime import datetime, timedelta
-from typing import List, Dict, Set
+from typing import List, Set
 
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException

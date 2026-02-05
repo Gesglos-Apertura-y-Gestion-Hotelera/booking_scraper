@@ -62,10 +62,6 @@ class ClientesDiarioScraper(BookingBaseScraper):
                 nombre = self.extract_name()
                 precio = self.extract_price()
                 calificacion = self.extract_rating_details()
-                import pprint as pp
-                print("*******************")
-                pp.pprint(calificacion)
-                
             except Exception as e:
                 logger.warning(f"⚠️ {hotel}: {e}")
                 nombre = hotel
@@ -85,9 +81,6 @@ class ClientesDiarioScraper(BookingBaseScraper):
                 'check_in': checkin,
                 'check_out': checkout
             })
-            print("--------------------------")
-            pp.pprint(results)
-            logger.info(f"✅ {nombre} - {precio}")
 
         return results
 
