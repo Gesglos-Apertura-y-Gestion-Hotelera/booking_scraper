@@ -57,7 +57,7 @@ SCRAPER_REGISTRY = {
         'description': 'Scraping de seguimiento diario'
     },
     'personalizado': {
-        'module': 'Web_Scryping_Booking',
+        'module': 'Web_Scraping_Booking',
         'class': 'BookingScraperPersonalizado',
         'requires_dates': True,
         'data_param': 'hoteles',
