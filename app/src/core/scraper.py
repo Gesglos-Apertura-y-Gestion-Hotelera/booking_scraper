@@ -74,11 +74,9 @@ class BookingBaseScraper(ABC):
                 
                 # Aplicar función de procesamiento si existe
                 if extract_fn:
-                    result = extract_fn(text)
-                    if result:
-                        return result
-                elif text:
-                    return text
+                    text = extract_fn(text)
+
+                return text
                     
             except NoSuchElementException:
                 continue
@@ -239,7 +237,7 @@ class BookingBaseScraper(ABC):
 
     def extract_rating(self) -> str:
         """Extrae calificación (compatibilidad - usa extract_rating_details)"""
-        return self.extract_rating_details().get('calificacion_cualitativa', 'No disponible')
+        return self.extract_rating_details().get('calificacion_cualitativa', '')
 
     def extract_rating_details(self) -> Dict[str, str]:
         """Extrae puntuación, calificación cualitativa y comentarios"""
@@ -433,7 +431,10 @@ class BookingBaseScraper(ABC):
             time.sleep(1)
             
             cards = self.driver.find_elements(By.XPATH, '//div[@data-testid="property-card"]')
-            
+            import pprint as pp
+            print(f"\n{' '*30}HTML de CARDs:\n")
+            pp.pprint(cards)
+
             if not cards:
                 logger.warning(f"⚠️ No se encontraron hoteles en {ciudad}")
                 return []
@@ -454,7 +455,7 @@ class BookingBaseScraper(ABC):
             return hotels_data
             
         except Exception as e:
-            logger.error(f"❌ Error en {ciudad}: {e}")
+            logger.error(f"❌ Error al Extraer desde la card property {ciudad}: {e}")
             return []
 
     def _extract_from_property_card(
@@ -495,14 +496,13 @@ class BookingBaseScraper(ABC):
                 ('div.fff1944c52.e1ca2942a5', 'CSS'),
                 ('//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
                 ('[data-testid="price"]', 'CSS'),
-                ('.//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
-                ('.//span[@data-testid="price-alternative"]', 'XPATH'),
-                ('.//span[@data-testid="price"]', 'XPATH'),
             ],
             default="0"
         )
         if not precio_raw:
             precio_raw = self.extract_price()
+        else:
+            logger.info(f"\n\n{' '*20}precio RAW: {precio_raw}\n")
 
         divisa, precio = self.cleaner.limpiar_precio(precio_raw)
         
@@ -513,8 +513,12 @@ class BookingBaseScraper(ABC):
         review_promedio = self._try_extract(
             card,
             [('.//div[@data-testid="review-score"]/div[2]/div[1]', 'XPATH')],
-            default="No disponible"
+            default=""
         )
+        if review_promedio:
+            logger.info(f"\n\n{' '*20}review promedio: {review_promedio}\n")
+        else:
+            review_promedio = self.extract_rating()
         
         # Comentarios (con estrategias robustas)
         comentarios = self._extract_reviews_from_card(card)
@@ -602,7 +606,7 @@ class BookingBaseScraper(ABC):
                         score = match.group(1)
                         logger.debug(f"✓ Puntuación card (aria-label): {score}")
                         return score
-        except Exception:
+        except Exception():
             pass
         
         logger.debug("⚠️ No se pudo extraer puntuación de la card")
