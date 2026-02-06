@@ -89,7 +89,6 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                     nombre = Hotel
                     precio = "0"
                     calificacion = "No disponible"
-                print(f"precio {precio}")
                 cleaner = DataCleaner()
                 divisa, precio = cleaner.limpiar_precio(precio)
                 results.append({
@@ -103,9 +102,7 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                     'check_in': checkin_str,
                     'check_out': checkout_str
                 })
-            import  pprint as pp
-            print(f"results: {pp.pprint(results)}")
-            # Avanzar al siguiente día
+
             fecha_actual = siguiente_dia
             logger.info(f"✅ ✅ pasando a la siguiente fecha: {fecha_actual}")
         return results
@@ -173,15 +170,15 @@ if __name__ == "__main__":
         webapp_url=os.environ.get('WEBAPP_URL')
     )
 
-    # Mostrar resultados
-    print(f"\n{'=' * 80}")
-    print(f"Total de resultados: {len(resultados)}")
-    print(f"{'=' * 80}\n")
-
-    for hotel in resultados:
-        print(f"🏨 {hotel['nombre']}")
-        print(f"   📍 {hotel['ciudad']}")
-        print(f"   💰 {hotel['precio']}")
-        print(f"   ⭐ {hotel['calificacion']}")
-        print(f"   📅 {hotel['check_in']} → {hotel['check_out']}")
-        print("-" * 80)
+    # # Mostrar resultados
+    # print(f"\n{'=' * 80}")
+    # print(f"Total de resultados: {len(resultados)}")
+    # print(f"{'=' * 80}\n")
+    #
+    # for hotel in resultados:
+    #     print(f"🏨 {hotel['nombre']}")
+    #     print(f"   📍 {hotel['ciudad']}")
+    #     print(f"   💰 {hotel['precio']}")
+    #     print(f"   ⭐ {hotel['calificacion']}")
+    #     print(f"   📅 {hotel['check_in']} → {hotel['check_out']}")
+    #     print("-" * 80)
