@@ -152,8 +152,8 @@
 
   function ejecutarProceso(btn, scriptKey, check_in = null, check_out = null, ciudad = null) {
     const estado = document.getElementById("mensajeEstado");
-    const urlScript = "https://script.google.com/macros/s/AKfycbwdyQjznTSBY8V8x1h9lls_aEvFeIa0_mFx1RGF5rBuOdxP238WmtzibMGywL1_TKePOA/exec";                       
-
+    const urlScript = "https://script.google.com/macros/s/AKfycbyr38_IDYgI3kQIgaiqx1935y2J-ySRF41xpIGhrworAd-qsBIpEILVnwT3I4KA4rO9DA/exec";
+                       
     btn.disabled = true;
     const contenidoOriginal = btn.getAttribute('data-original-html') || btn.innerHTML;
     btn.innerHTML = "⏳ Enviando...";
