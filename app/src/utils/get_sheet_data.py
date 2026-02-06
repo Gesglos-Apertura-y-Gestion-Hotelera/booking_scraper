@@ -43,3 +43,19 @@ def get_sheet_data()->list[str]:
         logger.error(f"❌ Error parseando JSON: {e}")
         logger.error(f"JSON recibido: {json_str}")
         sys.exit(1)
+
+        '''
+        # Prioridad 1: Variables de entorno (GitHub Actions)
+        script_key = os.getenv('SCRIPT_KEY')
+        sheet_data = os.getenv('SHEET_DATA')
+        check_in_str = os.getenv('CHECK_IN')
+        check_out_str = os.getenv('CHECK_OUT')
+
+        # Fallback: sys.argv (Docker local)
+        if not script_key:
+            script_key = sys.argv[1] if len(sys.argv) > 1 else None
+        if not check_in_str:
+            check_in_str = sys.argv[3] if len(sys.argv) > 3 else None
+        if not check_out_str:
+            check_out_str = sys.argv[4] if len(sys.argv) > 4 else None
+            '''

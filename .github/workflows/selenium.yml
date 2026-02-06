@@ -1,5 +1,4 @@
 name: Selenium Tests
-
 on:
   workflow_dispatch:
     inputs:
@@ -49,9 +48,8 @@ jobs:
             echo "check_in=${{ inputs.check_in }}" >> $GITHUB_OUTPUT
             echo "check_out=${{ inputs.check_out }}" >> $GITHUB_OUTPUT
           else
-            # Valores por defecto para push en testing/github o main
             echo "script_key=clientes_diario" >> $GITHUB_OUTPUT
-            echo "sheet_data=[{'hotel':'Hotel Brisas La Gaviota Mariquit-Tolima','ciudad':'mariquita'},{'hotel':'Casa de la Cruz','ciudad':'Mariquita'}]" >> $GITHUB_OUTPUT
+            echo "sheet_data=[{\"hotel\":\"Hotel Brisas La Gaviota Mariquit-Tolima\",\"ciudad\":\"mariquita\"},{\"hotel\":\"Casa de la Cruz\",\"ciudad\":\"Mariquita\"}]" >> $GITHUB_OUTPUT
             echo "check_in=" >> $GITHUB_OUTPUT
             echo "check_out=" >> $GITHUB_OUTPUT
           fi
@@ -60,49 +58,25 @@ jobs:
         run: docker build -f dockerfile -t selenium-app .
 
       - name: Run scraper container
+        id: run-and-save-container
         env:
           SCRIPT_KEY: ${{ steps.params.outputs.script_key }}
           SHEET_DATA: ${{ steps.params.outputs.sheet_data }}
           CHECK_IN: ${{ steps.params.outputs.check_in }}
           CHECK_OUT: ${{ steps.params.outputs.check_out }}
         run: |
-          docker run --shm-size=2gb \
+          CONTAINER_ID=$(docker run -d \
+            --shm-size=2gb \
             -e BOOKING_CURRENCY=COP \
             -e BOOKING_COUNTRY=co \
             -e SHEET_DATA="$SHEET_DATA" \
             -e SCRIPT_KEY="$SCRIPT_KEY" \
             -e CHECK_IN="$CHECK_IN" \
             -e CHECK_OUT="$CHECK_OUT" \
-            selenium-app \
-            "${{ steps.params.outputs.script_key }}" \
-            "${{ steps.params.outputs.check_in }}" \
-            "${{ steps.params.outputs.check_out }}"
-
-      - name: Run container
-        id: run-and-save-container
-        run: |
-          # Ejecutar y guardar ID
-          CONTAINER_ID=$(docker run -d your-image)
+            selenium-app)
+          
           echo "container_id=$CONTAINER_ID" >> $GITHUB_OUTPUT
           
-          # Esperar
-          docker wait "$CONTAINER_ID"
-
-      - name: Show logs
-        if: always()
-        run: |
-          CONTAINER_ID=$(docker ps -lq)
-
-          # Si no hay contenedores corriendo, buscar detenidos
-          if [ -z "$CONTAINER_ID" ]; then
-            CONTAINER_ID=$(docker ps -laq | head -1)
-          fi
-
-          # Mostrar logs si encontró algún contenedor
-          if [ -n "$CONTAINER_ID" ]; then
-            echo "📋 Logs del contenedor $CONTAINER_ID:"
-            docker logs "$CONTAINER_ID"
-          else
-            echo "⚠️ No hay contenedores disponibles"
-            docker ps -a
-          fi
+          # Esperar y mostrar logs
+          docker wait "$CONTAINER_ID" || true
+          docker logs "$CONTAINER_ID"
