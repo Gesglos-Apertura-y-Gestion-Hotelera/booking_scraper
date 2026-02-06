@@ -44,12 +44,12 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "script_key=${{ inputs.script_key }}" >> $GITHUB_OUTPUT
-            echo "sheet_data=${{ inputs.sheet_data }}" >> $GITHUB_OUTPUT
+            echo 'sheet_data=${{ inputs.sheet_data }}' >> $GITHUB_OUTPUT
             echo "check_in=${{ inputs.check_in }}" >> $GITHUB_OUTPUT
             echo "check_out=${{ inputs.check_out }}" >> $GITHUB_OUTPUT
           else
             echo "script_key=clientes_diario" >> $GITHUB_OUTPUT
-            echo "sheet_data=[{\"hotel\":\"Hotel Brisas La Gaviota Mariquit-Tolima\",\"ciudad\":\"mariquita\"},{\"hotel\":\"Casa de la Cruz\",\"ciudad\":\"Mariquita\"}]" >> $GITHUB_OUTPUT
+            echo 'sheet_data=[{\"hotel\":\"Hotel Brisas La Gaviota Mariquit-Tolima\",\"ciudad\":\"mariquita\"},{\"hotel\":\"Casa de la Cruz\",\"ciudad\":\"Mariquita\"}]' >> $GITHUB_OUTPUT
             echo "check_in=" >> $GITHUB_OUTPUT
             echo "check_out=" >> $GITHUB_OUTPUT
           fi
