@@ -162,7 +162,7 @@ class BookingBaseScraper(ABC):
                 '//button[@aria-label="Ignorar información sobre el inicio de sesión."]'
             )
             button.click()
-            time.sleep(2)
+            time.sleep(1)
             logger.debug("✓ Popup cerrado")
         except Exception:
             pass
@@ -180,9 +180,9 @@ class BookingBaseScraper(ABC):
         logger.info(f"🔍 {hotel_data.hotel} ({checkin} → {checkout})")
 
         self.driver.get(url)
-        time.sleep(5)
+        time.sleep(1)
         self.close_popup()
-        time.sleep(2)
+        time.sleep(1)
 
         return self.extract_hotel_data(hotel_data, checkin, checkout)
 
@@ -433,9 +433,9 @@ class BookingBaseScraper(ABC):
         
         try:
             self.driver.get(url)
-            time.sleep(5)
+            time.sleep(1)
             self.close_popup()
-            time.sleep(2)
+            time.sleep(1)
             
             cards = self.driver.find_elements(By.XPATH, '//div[@data-testid="property-card"]')
             

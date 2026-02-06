@@ -141,11 +141,11 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         try:
             # Cargar página
             self.driver.get(url)
-            time.sleep(5)
+            time.sleep(1)
             
             # Cerrar popup si aparece
             self.close_popup()
-            time.sleep(2)
+            time.sleep(1)
             
             # Buscar todos los elementos de hoteles
             hotels_elements = self.driver.find_elements(

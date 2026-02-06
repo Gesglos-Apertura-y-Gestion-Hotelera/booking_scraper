@@ -53,7 +53,7 @@ class ChromeDriverFactory:
         """Establece cookies de Booking.com para COP"""
         try:
             driver.get(ChromeDriverFactory.BOOKING_BASE_URL)
-            time.sleep(2)
+            time.sleep(1)
 
             driver.add_cookie({
                 'name': 'currency',

@@ -74,9 +74,9 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                 logger.info(f"🔍 {Hotel} | {checkin_str}")
                 logger.info(f"url: {url}")
                 self.driver.get(url)
-                time.sleep(5)
+                time.sleep(1)
                 self.close_popup()
-                time.sleep(2)
+                time.sleep(1)
 
                 # Extraer datos usando métodos heredados
                 try:
