@@ -1,5 +1,3 @@
-import pprint
-
 import requests
 import json
 
@@ -31,7 +29,7 @@ class GoogleSheetsClient:
             response.raise_for_status()
             return True
         except requests.exceptions.RequestException as e:
-            print(f"❌ Error de red: {e}")
+            logger.error(f"❌ Error de red: {e}")
             return False
 
 # --- FUNCIÓN PRINCIPAL (ORQUESTADORA) ---

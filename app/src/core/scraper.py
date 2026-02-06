@@ -232,9 +232,6 @@ class BookingBaseScraper(ABC):
             return text.replace("Desde ", "").replace(".", "").strip() if text else None
         
         result = self._try_extract(self.driver, selectors, clean_price, "0")
-        logger.info(f"Precio extraído: {result}")
-        import pprint as pp
-        print(f"result precio extraido   {pp.pformat(result)}")
 
         return result
 
@@ -277,7 +274,6 @@ class BookingBaseScraper(ABC):
             match = re.search(r'(\d+[.,]\d+)', text)
             if match:
                 score = match.group(1)
-                logger.debug(f"✓ Puntuación por data-testid: {score}")
                 return score
         except NoSuchElementException:
             pass
@@ -363,8 +359,7 @@ class BookingBaseScraper(ABC):
             r"(\w+\s*\w+)\s*:",
             default=None
         )
-        import pprint as pp
-        print(f"review score completo con extras {pp.pformat(result)}")
+
         if result:
             return self.cleaner.quitar_tildes(result)
         

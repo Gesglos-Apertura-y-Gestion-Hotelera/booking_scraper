@@ -179,16 +179,16 @@ if __name__ == "__main__":
         webapp_url=None
     )
 
-    # Mostrar resultados
-    print(f"\n{'=' * 80}")
-    print(f"Total de resultados: {len(resultados)}")
-    print(f"{'=' * 80}\n")
-
-    for comp in resultados:
-        print(f"🏨 {comp['nombre']}")
-        print(f"   🏷️  Competidor: {comp['competidor']}")
-        print(f"   📍 {comp['ciudad']}")
-        print(f"   💰 {comp['precio']}")
-        print(f"   ⭐ {comp['calificacion']}")
-        print(f"   📅 {comp['check_in']} → {comp['check_out']}")
-        print("-" * 80)
+    # # Mostrar resultados
+    # print(f"\n{'=' * 80}")
+    # print(f"Total de resultados: {len(resultados)}")
+    # print(f"{'=' * 80}\n")
+    #
+    # for comp in resultados:
+    #     print(f"🏨 {comp['nombre']}")
+    #     print(f"   🏷️  Competidor: {comp['competidor']}")
+    #     print(f"   📍 {comp['ciudad']}")
+    #     print(f"   💰 {comp['precio']}")
+    #     print(f"   ⭐ {comp['calificacion']}")
+    #     print(f"   📅 {comp['check_in']} → {comp['check_out']}")
+    #     print("-" * 80)
