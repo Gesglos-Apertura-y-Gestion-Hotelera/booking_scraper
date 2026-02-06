@@ -5,11 +5,13 @@ from .logger import  logger
 
 
 def get_script_key()->str:
-    # Acepta 1 O MÁS parámetros
-    script_key = os.getenv('SCRIPT_KEY')
+    '''
+    rescata la variable de entorno Script_key
+    '''
+    script_key = os.getenv('SCRIPT_KEY', '')
     if not script_key:
+        logger.error(f" ** Var ENV script_key not found : ->{script_key}<-")
         try:
-            logger.error(f" ** Var ENV script_key : ->{script_key}<-")
             args = sys.argv[1:]  # Todos los parámetros
             script_key = args[0]
 
