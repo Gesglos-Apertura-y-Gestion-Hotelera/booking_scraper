@@ -502,6 +502,7 @@ class BookingBaseScraper(ABC):
         if not precio_raw:
             precio_raw = self.extract_price()
         else:
+            # no borrar este logger, fallaria PRECIO Y DIVISAS
             logger.info(f"\n\n{' '*20}precio RAW: {precio_raw}\n")
 
         divisa, precio = self.cleaner.limpiar_precio(precio_raw)
@@ -516,6 +517,7 @@ class BookingBaseScraper(ABC):
             default=""
         )
         if review_promedio:
+            # no borrar este logger, fallaria reviews
             logger.info(f"\n\n{' '*20}review promedio: {review_promedio}\n")
         else:
             review_promedio = self.extract_rating()
