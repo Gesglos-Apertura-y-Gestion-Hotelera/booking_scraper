@@ -60,33 +60,28 @@ jobs:
         run: docker build -f dockerfile -t selenium-app .
 
       - name: Run scraper container
+        id: run-and-save-container  # ← Mover id aquí
         env:
           SCRIPT_KEY: ${{ steps.params.outputs.script_key }}
           SHEET_DATA: ${{ steps.params.outputs.sheet_data }}
           CHECK_IN: ${{ steps.params.outputs.check_in }}
           CHECK_OUT: ${{ steps.params.outputs.check_out }}
         run: |
-          docker run --shm-size=2gb \
+          CONTAINER_ID=$(docker run -d \
+            --shm-size=2gb \
             -e BOOKING_CURRENCY=COP \
             -e BOOKING_COUNTRY=co \
             -e SHEET_DATA="$SHEET_DATA" \
             -e SCRIPT_KEY="$SCRIPT_KEY" \
             -e CHECK_IN="$CHECK_IN" \
             -e CHECK_OUT="$CHECK_OUT" \
-            selenium-app \
-            "${{ steps.params.outputs.script_key }}" \
-            "${{ steps.params.outputs.check_in }}" \
-            "${{ steps.params.outputs.check_out }}"
-
-      - name: Run container
-        id: run-and-save-container
-        run: |
-          # Ejecutar y guardar ID
-          CONTAINER_ID=$(docker run -d your-image)
+            selenium-app)
+          
           echo "container_id=$CONTAINER_ID" >> $GITHUB_OUTPUT
           
-          # Esperar
+          # Esperar y mostrar logs
           docker wait "$CONTAINER_ID"
+          docker logs "$CONTAINER_ID"
 
       - name: Show logs
         if: always()
