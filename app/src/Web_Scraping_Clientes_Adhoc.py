@@ -82,7 +82,6 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                 try:
                     nombre = self.extract_name()
                     precio = self.extract_price()
-                    print(f"precio {precio}")
                     calificacion = self.extract_rating_details()
                 except Exception as e:
                     logger.warning(f"⚠️ {Hotel} ({checkin_str}): {e}")
