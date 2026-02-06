@@ -78,6 +78,31 @@ jobs:
             "${{ steps.params.outputs.check_in }}" \
             "${{ steps.params.outputs.check_out }}"
 
-      - name: Show logs (si falla)
-        if: failure()
-        run: docker logs $(docker ps -lq)
+      - name: Run container
+        id: run-and-save-container
+        run: |
+          # Ejecutar y guardar ID
+          CONTAINER_ID=$(docker run -d your-image)
+          echo "container_id=$CONTAINER_ID" >> $GITHUB_OUTPUT
+          
+          # Esperar
+          docker wait "$CONTAINER_ID"
+
+      - name: Show logs
+        if: always()
+        run: |
+          CONTAINER_ID=$(docker ps -lq)
+
+          # Si no hay contenedores corriendo, buscar detenidos
+          if [ -z "$CONTAINER_ID" ]; then
+            CONTAINER_ID=$(docker ps -laq | head -1)
+          fi
+
+          # Mostrar logs si encontró algún contenedor
+          if [ -n "$CONTAINER_ID" ]; then
+            echo "📋 Logs del contenedor $CONTAINER_ID:"
+            docker logs "$CONTAINER_ID"
+          else
+            echo "⚠️ No hay contenedores disponibles"
+            docker ps -a
+          fi
