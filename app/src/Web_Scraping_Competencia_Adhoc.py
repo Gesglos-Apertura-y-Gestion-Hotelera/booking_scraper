@@ -72,9 +72,9 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                 logger.info(f"🔍 {competidor} | {checkin_str}")
 
                 self.driver.get(url)
-                time.sleep(5)
+                time.sleep(1)
                 self.close_popup()
-                time.sleep(2)
+                time.sleep(1)
 
                 # Extraer datos usando métodos heredados
                 try:

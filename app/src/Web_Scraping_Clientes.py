@@ -54,9 +54,9 @@ class ClientesDiarioScraper(BookingBaseScraper):
             logger.info(f"URL: {url}")
 
             self.driver.get(url)
-            time.sleep(5)
+            time.sleep(1)
             self.close_popup()
-            time.sleep(2)
+            time.sleep(1)
 
             try:
                 nombre = self.extract_name()
