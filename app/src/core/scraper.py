@@ -491,9 +491,19 @@ class BookingBaseScraper(ABC):
                 ('.//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
                 ('.//span[@data-testid="price-alternative"]', 'XPATH'),
                 ('.//span[@data-testid="price"]', 'XPATH'),
+                ('div.abf093bdfe.fc23698243', 'CSS'),
+                ('div.fff1944c52.e1ca2942a5', 'CSS'),
+                ('//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
+                ('[data-testid="price"]', 'CSS'),
+                ('.//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
+                ('.//span[@data-testid="price-alternative"]', 'XPATH'),
+                ('.//span[@data-testid="price"]', 'XPATH'),
             ],
             default="0"
         )
+        if not precio_raw:
+            precio_raw = self.extract_price()
+
         divisa, precio = self.cleaner.limpiar_precio(precio_raw)
         
         # Puntuación - Estrategias mejoradas
