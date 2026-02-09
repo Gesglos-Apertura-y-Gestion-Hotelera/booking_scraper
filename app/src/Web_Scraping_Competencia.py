@@ -31,10 +31,10 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
 
     def run(self) -> list:
         """Ejecuta scraping para todos los competidores"""
-        checkin = datetime.now().strftime('%Y-%m-%d')
-        checkout = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        checkin_str = datetime.now().strftime('%Y-%m-%d')
+        checkout_str = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 
-        logger.info(f"📅 Check-in: {checkin} | Check-out: {checkout}")
+        logger.info(f"📅 Check-in: {checkin_str} | Check-out: {checkout_str}")
 
         results = []
         for comp_data in self.competidores:
@@ -56,39 +56,39 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
             competidor_ciudad = f"{competidor} - {ciudad}"
             competidor_ciudad = re.sub(r"\s{1,10}", "+", competidor_ciudad)
 
-            url = self.build_search_url(competidor_ciudad, checkin, checkout)
+            url = self.build_search_url(competidor_ciudad, checkin_str, checkout_str)
 
             self.open_url(url)
 
             rating_details = None
+            # Extraer datos usando métodos heredados
             try:
                 nombre = self.extract_name()
                 precio = self.extract_price()
-                rating_details = self.extract_rating_details()
-
+                puntuacion = self.extract_puntuacion(),
+                calificacion_cualitativa = self.extract_calificacion_cualitativa(),
+                comentarios = self.extract_comentarios()
             except Exception as e:
-                logger.warning(f"⚠️ {competidor} ({checkin}): {e}")
+                logger.warning(f"⚠️ {competidor} ({checkin_str}): {e}")
                 nombre = competidor
                 precio = "0"
-                rating_details = {
-                'puntuacion': 0,
-                'calificacion_cualitativa': "",
-                'comentarios': None
-            }
+                calificacion_cualitativa = "No disponible"
+                puntuacion = "0"
+                comentarios = "No disponible"
+
             cleaner = DataCleaner()
             divisa, precio = cleaner.limpiar_precio(precio)
-
             results.append({
                 'hotel': nombre,
-                'precio': precio,
                 'divisa': divisa,
-                'puntuacion': rating_details['puntuacion'],
+                'precio': precio,
+                'review_promedio': calificacion_cualitativa,
+                'comentarios': comentarios,
+                'puntuacion': puntuacion,
                 'competidor': competidor,
-                'review_promedio': rating_details['calificacion_cualitativa'],
                 'ciudad': ciudad,
-                'check_in': checkin,
-                'check_out': checkout,
-                'comentarios': rating_details['comentarios'],
+                'check_in': checkin_str,
+                'check_out': checkout_str
             })
 
             logger.info(f"✅  rating_details {rating_details} ")

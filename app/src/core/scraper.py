@@ -185,26 +185,6 @@ class BookingBaseScraper(ABC):
 
         return result
 
-    def extract_rating(self) -> str:
-        """Extrae calificación (compatibilidad - usa extract_rating_details)"""
-        return self.extract_rating_details().get('calificacion_cualitativa', '')
-
-    def extract_rating_details(self) -> Dict[str, str]:
-        """Extrae puntuación, calificación cualitativa y comentarios"""
-        try:
-            return {
-                'puntuacion': self.extract_puntuacion(),
-                'calificacion_cualitativa': self.extract_calificacion_cualitativa(),
-                'comentarios': self.extract_comentarios()
-            }
-        except Exception as e:
-            logger.warning(f"⚠️ Error en rating details: {e}")
-            return {
-                'puntuacion': "No disponible",
-                'calificacion_cualitativa': "No disponible",
-                'comentarios': "0"
-            }
-
     def extract_puntuacion(self) -> str:
         """
         Extrae puntuación numérica con estrategias robustas
@@ -305,7 +285,6 @@ class BookingBaseScraper(ABC):
         ]
         result = self._try_extract(self.driver, class_selectors, default=None)
         if result:
-            logger.info(f"📤 rescatado calificacion 1: {result}")
             return result
         
         # Estrategia 2: Regex en page_source
@@ -438,9 +417,8 @@ class BookingBaseScraper(ABC):
         puntuacion = self._extract_puntuacion_from_card(card)
         
         # Calificación cualitativa
-        review_promedio = self.extract_rating()
-        logger.info(f"\n\n{' ' * 20}review promedio extract rating: {review_promedio}\n")
-        
+        review_promedio = self.extract_calificacion_cualitativa()
+
         # Comentarios (con estrategias robustas)
         comentarios = self._extract_reviews_from_card(card)
         

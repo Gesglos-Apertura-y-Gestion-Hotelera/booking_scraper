@@ -78,26 +78,31 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                 try:
                     nombre = self.extract_name()
                     precio = self.extract_price()
-                    calificacion = self.extract_rating_details()
+                    puntuacion = self.extract_puntuacion(),
+                    calificacion_cualitativa = self.extract_calificacion_cualitativa(),
+                    comentarios = self.extract_comentarios()
                 except Exception as e:
                     logger.warning(f"⚠️ {Hotel} ({checkin_str}): {e}")
                     nombre = Hotel
                     precio = "0"
-                    calificacion = "No disponible"
-                cleaner = DataCleaner()
-                divisa, precio = cleaner.limpiar_precio(precio)
-                results.append({
-                    'hotel': nombre,
-                    'divisa': divisa,
-                    'precio': precio,
-                    'review_promedio': calificacion.get("calificacion_cualitativa"),
-                    'opiniones': calificacion.get("comentarios"),
-                    'puntuacion': calificacion.get("puntuacion"),
-                    'ciudad': ciudad,
-                    'check_in': checkin_str,
-                    'check_out': checkout_str
-                })
+                    calificacion_cualitativa = "No disponible"
+                    puntuacion = "0"
+                    comentarios = "No disponible"
 
+
+            cleaner = DataCleaner()
+            divisa, precio = cleaner.limpiar_precio(precio)
+            results.append({
+                'hotel': nombre,
+                'divisa': divisa,
+                'precio': precio,
+                'review_promedio': calificacion_cualitativa,
+                'comentarios': comentarios,
+                'puntuacion': puntuacion,
+                'ciudad': ciudad,
+                'check_in': checkin_str,
+                'check_out': checkout_str
+            })
             fecha_actual = siguiente_dia
             logger.info(f"✅ ✅ pasando a la siguiente fecha: {fecha_actual}")
         return results

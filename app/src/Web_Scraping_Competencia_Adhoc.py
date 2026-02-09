@@ -78,12 +78,16 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                 try:
                     nombre = self.extract_name()
                     precio = self.extract_price()
-                    calificacion = self.extract_rating_details()
+                    puntuacion= self.extract_puntuacion(),
+                    calificacion_cualitativa= self.extract_calificacion_cualitativa(),
+                    comentarios= self.extract_comentarios()
                 except Exception as e:
                     logger.warning(f"⚠️ {competidor} ({checkin_str}): {e}")
                     nombre = competidor
                     precio = "0"
-                    calificacion = "No disponible"
+                    calificacion_cualitativa = "No disponible"
+                    puntuacion = "0"
+                    comentarios = "No disponible"
 
                 cleaner = DataCleaner()
                 divisa, precio = cleaner.limpiar_precio(precio)
@@ -91,9 +95,9 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                     'hotel': nombre,
                     'divisa': divisa,
                     'precio': precio,
-                    'review_promedio': calificacion.get("calificacion_cualitativa"),
-                    'comentarios': calificacion.get("comentarios"),
-                    'puntuacion': calificacion.get("puntuacion"),
+                    'review_promedio': calificacion_cualitativa,
+                    'comentarios': comentarios,
+                    'puntuacion': puntuacion,
                     'competidor': competidor,
                     'ciudad': ciudad,
                     'check_in': checkin_str,

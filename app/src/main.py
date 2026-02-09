@@ -59,7 +59,7 @@ def run_scraper(
 
     scraper_config = SCRAPER_REGISTRY[script_key]
     logger.info(f"🚀 Iniciando: {scraper_config['description']}")
-    logger.info(f"📦 Módulo: {scraper_config['module']}")
+    logger.info(f"📍 📍 📍 📦 📍 📍 📍  Módulo: {scraper_config['module']}")
     logger.info(f"🏷️ Clase: {scraper_config['class']}")
     logger.info(f"📊 Sheet destino: {scraper_config['sheet_name']}")
     logger.info(f"🏨 Registros a procesar: {len(sheet_data)}")
