@@ -328,7 +328,7 @@ class BookingBaseScraper(ABC):
 
         if result_3:
             logger.info(f"📤📤📤rescatado calificacion 3: {result_3}")
-            return self.cleaner.quitar_tildes(result)
+            return result_3
 
     def extract_comentarios(self) -> str:
         """Extrae número de comentarios de página individual"""
