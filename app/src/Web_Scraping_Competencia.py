@@ -57,12 +57,8 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
             competidor_ciudad = re.sub(r"\s{1,10}", "+", competidor_ciudad)
 
             url = self.build_search_url(competidor_ciudad, checkin, checkout)
-            logger.info(f"🔍 URL: {url}")
 
-            self.driver.get(url)
-            time.sleep(1)
-            self.close_popup()
-            time.sleep(1)
+            self.open_url(url)
 
             rating_details = None
             try:
@@ -98,40 +94,3 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
             logger.info(f"✅  rating_details {rating_details} ")
 
         return results
-
-
-def buscar_competencia_hoy():
-    """Función principal para ejecutar el scraper diario de competencia"""
-    logger.info("🚀 SCRAPING COMPETENCIA DIARIO")
-
-    driver = None
-    try:
-        # Obtener datos de competidores
-        competidores = get_sheet_data()
-
-        # Ejecutar scraping
-        driver = ChromeDriverFactory.create_headless_driver()
-        ChromeDriverFactory.setup_booking_cookies(driver)
-
-        scraper = CompetenciaDiarioScraper(driver, competidores)
-        results = scraper.run()
-
-        # Enviar a Sheets
-        logger.info(f"📤 Enviando {len(results)} resultados")
-        enviar_sheets(results, os.environ.get('WEBAPP_URL'), sheet_name='competencia')
-
-        logger.info(f"✅ COMPLETADO: {len(results)} competidores")
-
-    except Exception as e:
-        logger.error(f"💥 ERROR: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        sys.exit(1)
-    finally:
-        if driver:
-            driver.quit()
-
-
-if __name__ == "__main__":
-    # codigo para pruebas unitarias
-    buscar_competencia_hoy()

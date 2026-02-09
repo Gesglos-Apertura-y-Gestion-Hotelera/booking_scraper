@@ -134,18 +134,12 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         logger.info(f"🔍 {ciudad} | {checkin_str} → {checkout_str}")
         
         # Construir URL de búsqueda
-        url = self.build_city_search_url(ciudad, checkin_str, checkout_str)
+        url = self.build_search_url(ciudad, checkin_str, checkout_str)
         
         hotels_data = []
         
         try:
-            # Cargar página
-            self.driver.get(url)
-            time.sleep(1)
-            
-            # Cerrar popup si aparece
-            self.close_popup()
-            time.sleep(1)
+            self.open_url(url)
             
             # Buscar todos los elementos de hoteles
             hotels_elements = self.driver.find_elements(
@@ -200,15 +194,12 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         
         # Nombre del hotel
         try:
-            hotel_data['hotel'] = hotel_element.find_element(
-                By.XPATH, 
-                './/div[@data-testid="title"]'
-            ).text
+            hotel_data['hotel'] = self.extract_name()
         except NoSuchElementException:
             hotel_data['hotel'] = "No disponible"
         
         # Precio - Estrategia con múltiples fallbacks
-        precio_raw = self._extract_price_from_card(hotel_element)
+        precio_raw = self.extract_price()
         
         # Limpiar precio
         cleaner = DataCleaner()
@@ -218,31 +209,23 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         
         # Puntuación numérica
         try:
-            puntuacion = hotel_element.find_element(
-                By.XPATH, 
-                './/div[@data-testid="review-score"]/div[1]'
-            ).text
+            puntuacion = self.extract_puntuacion()
             import re
             puntuacion = re.findall(r'\d+[,.]?\d*', puntuacion)[0]
-
-
             hotel_data['puntuacion'] = puntuacion
         except NoSuchElementException:
             hotel_data['puntuacion'] = "No disponible"
         
         # Reseña promedio (calificación cualitativa)
         try:
-            review = hotel_element.find_element(
-                By.XPATH, 
-                './/div[@data-testid="review-score"]/div[2]/div[1]'
-            ).text
-            logger.info(f"✅ ✅ ✅ ✅ ✅ ✅ Review: {review}")
+            review = self.extract_calificacion_cualitativa()
+            logger.info(f"✅ Review: {review}")
             hotel_data['review_promedio'] = review
         except NoSuchElementException:
             hotel_data['review_promedio'] = "No disponible"
         
         # Número de comentarios usando estrategia robusta heredada
-        hotel_data['comentarios'] = self._extract_reviews_count(hotel_element)
+        hotel_data['comentarios'] = self._extract_reviews_from_card(hotel_element)
         
         # Agregar información contextual
         hotel_data['ciudad'] = ciudad
@@ -250,50 +233,6 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         hotel_data['check_out'] = checkout
         
         return hotel_data
-
-    def _extract_price_from_card(self, hotel_element) -> str:
-        """
-        Extrae precio con múltiples estrategias de fallback
-        
-        Args:
-            hotel_element: Elemento WebDriver del hotel
-            
-        Returns:
-            Precio como string, "0" si no se encuentra
-        """
-        # Estrategia 1: Precio con descuento
-        try:
-            precio = hotel_element.find_element(
-                By.XPATH, 
-                './/span[@data-testid="price-and-discounted-price"]'
-            ).text
-            return precio
-        except NoSuchElementException:
-            pass
-        
-        # Estrategia 2: Precio alternativo
-        try:
-            precio = hotel_element.find_element(
-                By.XPATH, 
-                './/span[@data-testid="price-alternative"]'
-            ).text
-            return precio
-        except NoSuchElementException:
-            pass
-        
-        # Estrategia 3: Precio base
-        try:
-            precio = hotel_element.find_element(
-                By.XPATH, 
-                './/span[@data-testid="price"]'
-            ).text
-            return precio
-        except NoSuchElementException:
-            pass
-        
-        # Si ninguna estrategia funcionó
-        logger.debug("No se pudo extraer precio de la card")
-        return "0"
 
     def run(self) -> list:
         """
@@ -350,66 +289,3 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         logger.info(f"{'='*60}\n")
         
         return results
-
-
-def buscar_hoteles_personalizado():
-    """
-    Función standalone para ejecutar el scraper personalizado
-    Requiere variables de entorno: SHEET_DATA, CHECK_IN, CHECK_OUT
-    """
-    logger.info("🚀 SCRAPING PERSONALIZADO DE BOOKING")
-
-    driver = None
-    try:
-        # Obtener datos de ciudades
-        hoteles = get_sheet_data()
-        
-        if not hoteles:
-            logger.error("❌ No hay datos de ciudades para procesar")
-            sys.exit(1)
-        
-        # Obtener fechas desde variables de entorno
-        check_in_str = os.environ.get('CHECK_IN')
-        check_out_str = os.environ.get('CHECK_OUT')
-        
-        if not check_in_str or not check_out_str:
-            logger.error("❌ Se requieren las variables CHECK_IN y CHECK_OUT")
-            logger.error("   Ejemplo: CHECK_IN='2026-02-05' CHECK_OUT='2026-02-10'")
-            sys.exit(1)
-        
-        # Convertir strings a datetime
-        check_in = datetime.strptime(check_in_str, '%Y-%m-%d')
-        check_out = datetime.strptime(check_out_str, '%Y-%m-%d')
-        
-        # Validar rango
-        if check_in >= check_out:
-            logger.error("❌ CHECK_IN debe ser anterior a CHECK_OUT")
-            sys.exit(1)
-
-        # Ejecutar scraping
-        driver = ChromeDriverFactory.create_headless_driver()
-        ChromeDriverFactory.setup_booking_cookies(driver)
-
-        scraper = BookingScraperPersonalizado(driver, hoteles, check_in, check_out)
-        results = scraper.run()
-
-        # Enviar a Sheets
-        logger.info(f"📤 Enviando {len(results)} resultados a Google Sheets")
-        enviar_sheets(results, WEBAPP_URL, sheet_name='cliente')
-
-        logger.info(f"✅ COMPLETADO: {len(results)} hoteles procesados")
-
-    except Exception as e:
-        logger.error(f"💥 ERROR: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        sys.exit(1)
-    finally:
-        if driver:
-            logger.info("🔌 Cerrando driver...")
-            driver.quit()
-
-
-if __name__ == "__main__":
-    # Código para pruebas unitarias
-    buscar_hoteles_personalizado()

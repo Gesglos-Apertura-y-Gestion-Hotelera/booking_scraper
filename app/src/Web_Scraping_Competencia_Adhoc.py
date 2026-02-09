@@ -69,12 +69,10 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                 competidor_ciudad = re.sub(r"\s{1,10}", "+", competidor_ciudad)
 
                 url = self.build_search_url(competidor_ciudad, checkin_str, checkout_str)
+                logger.info(f"URL: {url}")
                 logger.info(f"🔍 {competidor} | {checkin_str}")
 
-                self.driver.get(url)
-                time.sleep(1)
-                self.close_popup()
-                time.sleep(1)
+                self.open_url(url)
 
                 # Extraer datos usando métodos heredados
                 try:
@@ -108,87 +106,3 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
             fecha_actual = siguiente_dia
 
         return results
-
-
-def buscar_competencia_adhoc(
-        competidores: list,
-        check_in: datetime,
-        check_out: datetime,
-        webapp_url: str = None
-):
-    """
-    Función principal para ejecutar el scraper ad-hoc de competencia.
-
-    Args:
-        competidores: Lista de competidores a buscar
-        check_in: Fecha inicial
-        check_out: Fecha final
-        webapp_url: URL opcional para enviar resultados a Google Sheets
-    """
-    logger.info("🚀 SCRAPING COMPETENCIA AD-HOC")
-    logger.info(f"📅 Rango: {check_in.strftime('%Y-%m-%d')} → {check_out.strftime('%Y-%m-%d')}")
-    logger.info(f"🏨 Competidores: {len(competidores)}")
-
-    driver = None
-    try:
-        # Crear driver
-        driver = ChromeDriverFactory.create_headless_driver()
-        ChromeDriverFactory.setup_booking_cookies(driver)
-
-        # Ejecutar scraping
-        scraper = CompetenciaDiarioScraperAdHoc(driver, competidores, check_in, check_out)
-        results = scraper.run()
-
-        # Enviar a Sheets si se proporciona URL
-        if webapp_url:
-            logger.info(f"📤 Enviando {len(results)} resultados a Sheets")
-            enviar_sheets(results, os.environ.get('WEBAPP_URL'), sheet_name="competencia")
-
-        logger.info(f"✅ COMPLETADO: {len(results)} registros")
-        return results
-
-    except Exception as e:
-        logger.error(f"💥 ERROR: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        raise
-    finally:
-        if driver:
-            driver.quit()
-
-
-if __name__ == "__main__":
-    # codigo para pruebas unitarias
-
-    # Datos de prueba
-    fake_competidores = [
-        {'Competidor': 'Hilton Bogotá', 'Ciudad': 'Bogotá'},
-        {'Competidor': 'Marriott Bogotá', 'Ciudad': 'Bogotá'},
-        {'Competidor': 'Sheraton Bogotá', 'Ciudad': 'Bogotá'},
-    ]
-
-    # Rango de 3 días desde hoy
-    fecha_inicio = datetime.now()
-    fecha_fin = datetime.now() + timedelta(days=3)
-
-    # Ejecutar
-    resultados = buscar_competencia_adhoc(
-        competidores=fake_competidores,
-        check_in=fecha_inicio,
-        check_out=fecha_fin,
-        webapp_url=None
-    )
-
-    # # Mostrar resultados
-    # print(f"\n{'=' * 80}")
-    # print(f"Total de resultados: {len(resultados)}")
-    # print(f"{'=' * 80}\n")
-    #
-    # for comp in resultados:
-    #     print(f"🏨 {comp['nombre']}")
-    #     print(f"   🏷️  Competidor: {comp['competidor']}")
-    #     print(f"   📍 {comp['ciudad']}")
-    #     print(f"   💰 {comp['precio']}")
-    #     print(f"   ⭐ {comp['calificacion']}")
-    #     print(f"   📅 {comp['check_in']} → {comp['check_out']}")
-    #     print("-" * 80)
