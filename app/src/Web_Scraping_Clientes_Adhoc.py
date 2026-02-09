@@ -72,11 +72,7 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                 # Usar el metodo heredado de BookingBaseScraper
                 url = self.build_search_url(hotel_ciudad, checkin_str, checkout_str)
                 logger.info(f"🔍 {Hotel} | {checkin_str}")
-                logger.info(f"url: {url}")
-                self.driver.get(url)
-                time.sleep(1)
-                self.close_popup()
-                time.sleep(1)
+                self.open_url(url)
 
                 # Extraer datos usando métodos heredados
                 try:
@@ -105,79 +101,3 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
             fecha_actual = siguiente_dia
             logger.info(f"✅ ✅ pasando a la siguiente fecha: {fecha_actual}")
         return results
-
-
-def buscar_reservas_adhoc(hoteles: list, check_in: datetime, check_out: datetime, webapp_url: str = os.environ.get('WEBAPP_URL')):
-    """
-    Función principal para ejecutar el scraper ad-hoc.
-
-    Args:
-        hoteles: Lista de hoteles a buscar
-        check_in: Fecha inicial
-        check_out: Fecha final
-        webapp_url: URL opcional para enviar resultados a Google Sheets
-    """
-    logger.info("🚀 SCRAPING CLIENTES DIARIO AD-HOC")
-    logger.info(f"📅 Rango: {check_in.strftime('%Y-%m-%d')} → {check_out.strftime('%Y-%m-%d')}")
-    logger.info(f"🏨 Hoteles: {len(hoteles)}")
-
-    driver = None
-    try:
-        # Crear driver
-        driver = ChromeDriverFactory.create_headless_driver()
-        ChromeDriverFactory.setup_booking_cookies(driver)
-
-        # Ejecutar scraping
-        scraper = ClientesDiarioScraperAdHoc(driver, hoteles, check_in, check_out)
-        results = scraper.run()
-
-        logger.info(f"📤 Enviando {len(results)} resultados a Sheets")
-        enviar_sheets(results, os.environ.get('WEBAPP_URL'), sheet_name='clientes')
-
-        logger.info(f"✅ COMPLETADO: {len(results)} registros")
-        return results
-
-    except Exception as e:
-        logger.error(f"💥 ERROR: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        pass
-    finally:
-        if driver:
-            driver.quit()
-
-
-if __name__ == "__main__":
-    # codigo para pruebas unitarias
-
-    # Datos de prueba
-    fake_hoteles = [
-        {'Hotel': 'Hotel Dann Carlton Bogotá', 'Ciudad': 'Bogotá'},
-        {'Hotel': 'Hilton Bogotá Corferias', 'Ciudad': 'Bogotá'},
-        {'Hotel': 'Hotel Tequendama', 'Ciudad': 'Bogotá'},
-    ]
-
-    # Rango de 3 días desde hoy
-    fecha_inicio = datetime.now()
-    fecha_fin = datetime.now() + timedelta(days=3)
-
-    # Ejecutar
-    resultados = buscar_reservas_adhoc(
-        hoteles=fake_hoteles,
-        check_in=fecha_inicio,
-        check_out=fecha_fin,
-        webapp_url=os.environ.get('WEBAPP_URL')
-    )
-
-    # # Mostrar resultados
-    # print(f"\n{'=' * 80}")
-    # print(f"Total de resultados: {len(resultados)}")
-    # print(f"{'=' * 80}\n")
-    #
-    # for hotel in resultados:
-    #     print(f"🏨 {hotel['nombre']}")
-    #     print(f"   📍 {hotel['ciudad']}")
-    #     print(f"   💰 {hotel['precio']}")
-    #     print(f"   ⭐ {hotel['calificacion']}")
-    #     print(f"   📅 {hotel['check_in']} → {hotel['check_out']}")
-    #     print("-" * 80)

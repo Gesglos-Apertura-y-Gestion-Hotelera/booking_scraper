@@ -6,8 +6,10 @@ import json
 import re
 import time
 from abc import ABC, abstractmethod
+from re import search
 from typing import List, Dict, Optional, Tuple
 
+from numpy.core.multiarray import result_type
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -138,19 +140,10 @@ class BookingBaseScraper(ABC):
             'top_currency': '1'
         }
         param_string = '&'.join(f'{k}={v}' for k, v in params.items())
-        return f'{self.BOOKING_BASE_URL}/searchresults.es.html?{param_string}'
-
-    def build_city_search_url(self, ciudad: str, checkin: str, checkout: str) -> str:
-        """Versión simplificada para búsqueda por ciudad"""
-        params = [
-            f"ss={ciudad}",
-            f"checkin={checkin}",
-            f"checkout={checkout}",
-            f"group_adults=2",
-            f"no_rooms=1",
-            f"group_children=0"
-        ]
-        return f"{self.BOOKING_BASE_URL}/searchresults.es.html?{'&'.join(params)}"
+        search_url = f'{self.BOOKING_BASE_URL}/searchresults.es.html?{param_string}'
+        search_url = re.sub(r"\s+", "+", search_url)
+        logger.info(f"search_url: {search_url}")
+        return search_url
 
     def close_popup(self):
         """Cierra popup de login si existe"""
@@ -168,47 +161,6 @@ class BookingBaseScraper(ABC):
     # ============================================================
     # EXTRACCIÓN DE PÁGINA INDIVIDUAL DE HOTEL
     # ============================================================
-
-    def search_hotel(self, hotel_data: HotelSearchData, checkin: str, checkout: str) -> HotelResult:
-        """
-        Busca un hotel específico y extrae información
-        Template Method Pattern
-        """
-        url = self.build_search_url(hotel_data.hotel, checkin, checkout)
-        logger.info(f"🔍 {hotel_data.hotel} ({checkin} → {checkout})")
-
-        self.driver.get(url)
-        time.sleep(1)
-        self.close_popup()
-        time.sleep(1)
-
-        return self.extract_hotel_data(hotel_data, checkin, checkout)
-
-    def extract_hotel_data(
-        self, 
-        hotel_data: HotelSearchData, 
-        checkin: str, 
-        checkout: str
-    ) -> HotelResult:
-        """Extrae datos del hotel de la página de resultados"""
-        try:
-            nombre = self.extract_name()
-            precio = self.extract_price()
-            calificacion = self.extract_rating()
-        except Exception as e:
-            logger.warning(f"⚠️ Error: {e}")
-            nombre = hotel_data.hotel
-            precio = "0"
-            calificacion = "No disponible"
-
-        return HotelResult(
-            hotel=nombre,
-            precio=precio,
-            calificacion=calificacion,
-            ciudad=hotel_data.ciudad,
-            check_in=checkin,
-            check_out=checkout
-        )
 
     def extract_name(self) -> str:
         """Extrae nombre del hotel"""
@@ -232,8 +184,6 @@ class BookingBaseScraper(ABC):
         result = self._try_extract(self.driver, selectors, clean_price, "0")
 
         return result
-
-
 
     def extract_rating(self) -> str:
         """Extrae calificación (compatibilidad - usa extract_rating_details)"""
@@ -347,33 +297,38 @@ class BookingBaseScraper(ABC):
 
     def extract_calificacion_cualitativa(self) -> str:
         """Extrae calificación cualitativa"""
-        # Estrategia 1: Por texto con palabras clave
-        keywords_xpath = " or ".join([f"contains(text(), '{kw}')" for kw in self.QUALITATIVE_KEYWORDS])
-        text_selectors = [(f"//div[{keywords_xpath}]", 'XPATH')]
-        
-        result = self._extract_with_regex(
-            self.driver,
-            text_selectors,
-            r"(\w+\s*\w+)\s*:",
-            default=None
-        )
 
-        if result:
-            return self.cleaner.quitar_tildes(result)
-        
-        # Estrategia 2: Por clases CSS
+        # Estrategia 1: Por clases CSS
         class_selectors = [
             ('div.f63b14ab7a.f546354b44', 'CSS'),
             ('div[class="f63b14ab7a f546354b44 becbee2f63"]', 'CSS'),
         ]
         result = self._try_extract(self.driver, class_selectors, default=None)
         if result:
+            logger.info(f"📤 rescatado calificacion 1: {result}")
             return result
         
-        # Estrategia 3: Regex en page_source
+        # Estrategia 2: Regex en page_source
         pattern = r'\b(' + '|'.join(self.QUALITATIVE_KEYWORDS) + r')\b'
         match = re.search(pattern, self.driver.page_source, re.IGNORECASE)
-        return match.group(1) if match else "No disponible"
+        if match:
+            logger.info(f"📤📤📤rescatado calificacion 2: {match.group(1)}")
+            return match.group(1) if match else "No disponible"
+
+        # Estrategia 3: Por texto con palabras clave
+        keywords_xpath = " or ".join([f"contains(text(), '{kw}')" for kw in self.QUALITATIVE_KEYWORDS])
+        text_selectors = [(f"//div[{keywords_xpath}]", 'XPATH')]
+
+        result_3 = self._extract_with_regex(
+            self.driver,
+            text_selectors,
+            r"(\w+\s*\w+)\s*:",
+            default=None
+        )
+
+        if result_3:
+            logger.info(f"📤📤📤rescatado calificacion 3: {result_3}")
+            return self.cleaner.quitar_tildes(result)
 
     def extract_comentarios(self) -> str:
         """Extrae número de comentarios de página individual"""
@@ -422,18 +377,12 @@ class BookingBaseScraper(ABC):
             Lista de diccionarios con info de hoteles
         """
         logger.info(f"🏨 Procesando: {ciudad}")
-        url = self.build_city_search_url(ciudad, checkin, checkout)
-        
+        url = self.build_search_url(ciudad, checkin, checkout)
+
         try:
-            self.driver.get(url)
-            time.sleep(1)
-            self.close_popup()
-            time.sleep(1)
+            self.open_url(url)
             
             cards = self.driver.find_elements(By.XPATH, '//div[@data-testid="property-card"]')
-            import pprint as pp
-            print(f"\n{' '*30}HTML de CARDs:\n")
-            pp.pprint(cards)
 
             if not cards:
                 logger.warning(f"⚠️ No se encontraron hoteles en {ciudad}")
@@ -479,31 +428,13 @@ class BookingBaseScraper(ABC):
             Diccionario con datos del hotel
         """
         # Nombre
-        hotel_name = self._try_extract(
-            card,
-            [('.//div[@data-testid="title"]', 'XPATH')],
-            default="No disponible"
-        )
+        hotel_name = self.extract_name()
         
         # Precio (múltiples estrategias)
-        precio_raw = self._try_extract(
-            card,
-            [
-                ('.//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
-                ('.//span[@data-testid="price-alternative"]', 'XPATH'),
-                ('.//span[@data-testid="price"]', 'XPATH'),
-                ('div.abf093bdfe.fc23698243', 'CSS'),
-                ('div.fff1944c52.e1ca2942a5', 'CSS'),
-                ('//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
-                ('[data-testid="price"]', 'CSS'),
-            ],
-            default="0"
-        )
-        if not precio_raw:
-            precio_raw = self.extract_price()
-        else:
-            # no borrar este logger, fallaria PRECIO Y DIVISAS
-            logger.info(f"\n\n{' '*20}precio RAW: {precio_raw}\n")
+        precio_raw = self.extract_price()
+
+        # no borrar este logger, fallaria PRECIO Y DIVISAS
+        logger.info(f"\n\n{' '*20}precio RAW: {precio_raw}\n")
 
         divisa, precio = self.cleaner.limpiar_precio(precio_raw)
         
@@ -511,16 +442,12 @@ class BookingBaseScraper(ABC):
         puntuacion = self._extract_puntuacion_from_card(card)
         
         # Calificación cualitativa
-        review_promedio = self._try_extract(
-            card,
-            [('.//div[@data-testid="review-score"]/div[2]/div[1]', 'XPATH')],
-            default=""
-        )
-        if review_promedio:
-            # no borrar este logger, fallaria reviews
-            logger.info(f"\n\n{' '*20}review promedio: {review_promedio}\n")
-        else:
-            review_promedio = self.extract_rating()
+        review_promedio = self.extract_rating()
+        logger.info(f"\n\n{' ' * 20}review promedio extract rating: {review_promedio}\n")
+
+        print(f"card:")
+        import pprint as pp
+        pp.pprint(card.text)
         
         # Comentarios (con estrategias robustas)
         comentarios = self._extract_reviews_from_card(card)
@@ -655,25 +582,11 @@ class BookingBaseScraper(ABC):
         
         return result.replace('.', '')
 
-    # ============================================================
-    # ALIAS PARA COMPATIBILIDAD
-    # ============================================================
-
-    def _extract_hotel_info(self, *args, **kwargs):
-        """Alias para compatibilidad con código existente"""
-        return self._extract_from_property_card(*args, **kwargs)
-    
-    def _extract_reviews_count(self, *args, **kwargs):
-        """Alias para compatibilidad con código existente"""
-        return self._extract_reviews_from_card(*args, **kwargs)
-    
-    def _extract_hotel_info_from_card(self, *args, **kwargs):
-        """Alias para mantener consistencia de nombres"""
-        return self._extract_from_property_card(*args, **kwargs)
-    
-    def _extract_reviews_count_from_card(self, *args, **kwargs):
-        """Alias para mantener consistencia de nombres"""
-        return self._extract_reviews_from_card(*args, **kwargs)
+    def open_url(self, url:str):
+        self.driver.get(url)
+        time.sleep(1)
+        self.close_popup()
+        time.sleep(1)
 
     # ============================================================
     # Méthodo ABSTRACTO

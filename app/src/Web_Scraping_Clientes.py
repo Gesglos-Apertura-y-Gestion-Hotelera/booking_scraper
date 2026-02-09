@@ -49,24 +49,38 @@ class ClientesDiarioScraper(BookingBaseScraper):
 
             hotel_ciudad = f"{hotel} - {ciudad}"
             hotel_ciudad = re.sub(r"\s{1,10}", "+", hotel_ciudad)
-
-            url = self.build_search_url(hotel_ciudad, checkin, checkout)
-            logger.info(f"URL: {url}")
-
-            self.driver.get(url)
-            time.sleep(1)
-            self.close_popup()
-            time.sleep(1)
+            logger.info(f"hotel ciudad: {hotel_ciudad}, ciudad: {ciudad}, hotel: {hotel}, checkin: {checkin}, checkout: {checkout}")
+            url = self.build_search_url(search_term=hotel_ciudad, checkin=checkin, checkout=checkout)
+            self.open_url(url)
 
             try:
                 nombre = self.extract_name()
-                precio = self.extract_price()
-                calificacion = self.extract_rating_details()
             except Exception as e:
-                logger.warning(f"⚠️ {hotel}: {e}")
-                nombre = hotel
-                precio = "0"
-                calificacion = "No disponible"
+                logger.warning(f"⚠️ [{hotel}] Falló extracción de NOMBRE: {e}")
+                nombre = "no disponible"
+
+            try:
+                precio = self.extract_price()
+            except Exception as e:
+                logger.warning(f"⚠️ [{hotel}] Falló extracción de PRECIO: {e}")
+                precio = "no disponible"
+
+            try:
+                review_promedio = self.extract_calificacion_cualitativa()
+            except Exception as e:
+                logger.warning(f"⚠️ [{hotel}] Falló extracción de REVIEW_PROMEDIO: {e}")
+                review_promedio = "no disponible"
+            try:
+                opiniones = self.extract_comentarios()
+            except Exception as e:
+                logger.warning(f"⚠️ [{hotel}] Falló extracción de OPINIONES: {e}")
+                opiniones = "no disponible"
+
+            try:
+                puntuacion = self.extract_puntuacion()
+            except Exception as e:
+                logger.warning(f"⚠️ [{hotel}] Falló extracción de PUNTUACION: {e}")
+                puntuacion = "no disponible"
 
             cleaner = DataCleaner()
             divisa, precio = cleaner.limpiar_precio(precio)
@@ -74,46 +88,12 @@ class ClientesDiarioScraper(BookingBaseScraper):
                 'hotel': nombre,
                 'divisa': divisa,
                 'precio': precio,
-                'review_promedio': calificacion.get("calificacion_cualitativa"),
-                'opiniones': calificacion.get("comentarios"),
-                'puntuacion': calificacion.get("puntuacion"),
+                'review_promedio': review_promedio,
+                'opiniones': opiniones,
+                'puntuacion': puntuacion,
                 'ciudad': ciudad,
                 'check_in': checkin,
                 'check_out': checkout
             })
 
         return results
-
-def buscar_reservas_hoy():
-    logger.info("🚀 SCRAPING CLIENTES DIARIO")
-
-    driver = None
-    try:
-        hoteles = get_sheet_data()
-
-        # Ejecutar scraping
-        driver = ChromeDriverFactory.create_headless_driver()
-        ChromeDriverFactory.setup_booking_cookies(driver)
-
-        scraper = ClientesDiarioScraper(driver, hoteles)
-        results = scraper.run()
-
-        # Enviar a Sheets
-        logger.info(f"📤 Enviando {len(results)} resultados")
-        enviar_sheets(results, WEBAPP_URL, sheet_name='clientes')
-
-        logger.info(f"✅ COMPLETADO: {len(results)} hoteles")
-
-    except Exception as e:
-        logger.error(f"💥 ERROR: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        sys.exit(1)
-    finally:
-        if driver:
-            driver.quit()
-
-
-if __name__ == "__main__":
-    # codigo para pruebas unitarias
-    buscar_reservas_hoy()
