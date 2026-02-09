@@ -193,7 +193,6 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         try:
             nombre_element = hotel_element.find_element(By.CSS_SELECTOR, '[data-testid="title"]')
             name = nombre_element.text.strip()
-            logger.info(f"✅ ✅ ✅ ✅ ✅ nombre: {name}")
             return name
         except NoSuchElementException:
             logger.warning("⚠️ Nombre del hotel no encontrado")
@@ -217,10 +216,10 @@ class BookingScraperPersonalizado(BookingBaseScraper):
                 if self._is_valid_price_text(precio_raw):
                     cleaner = DataCleaner()
                     divisa, precio = cleaner.limpiar_precio(precio_raw)
-                    logger.info(f"✅ PRECIO ENCONTRADO: '{precio_raw}' → {divisa} {precio}")
                     return str(precio), divisa
 
             except NoSuchElementException:
+                logger.error(f"PRECIO NO ENCONTRADO: '{precio_raw}' → {divisa} {precio}")
                 continue
 
         logger.warning("⚠️ Ningún selector de precio funcionó")
@@ -244,7 +243,6 @@ class BookingScraperPersonalizado(BookingBaseScraper):
             if "Se abre" in name or len(name) < 3:
                 raise NoSuchElementException("Texto inválido")
 
-            logger.info(f"✅ ✅ ✅ ✅ ✅ nombre: {name}")
             return name
         except NoSuchElementException:
             logger.warning("⚠️ Nombre del hotel no encontrado")
@@ -295,7 +293,6 @@ class BookingScraperPersonalizado(BookingBaseScraper):
                 '.becbee2f63'
             )
             review = review_element.text.strip()
-            logger.info(f"✅ ✅ ✅ ✅ ✅ Review: {review}")
             return review
         except NoSuchElementException:
             logger.warning("⚠️ Review cualitativo no encontrado")
