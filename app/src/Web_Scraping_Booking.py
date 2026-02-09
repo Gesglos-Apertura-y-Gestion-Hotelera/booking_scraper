@@ -5,7 +5,7 @@ Scraping de hoteles en rango de fechas para múltiples ciudades
 Lee datos desde variable de entorno SHEET_DATA
 """
 import os
-import sys
+import re
 import time
 from datetime import datetime, timedelta
 from typing import List, Dict
@@ -14,10 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
 from core.scraper import BookingBaseScraper
-from core.chrome_driver import ChromeDriverFactory
 from utils.cleaner import DataCleaner
-from utils.enviar_sheets import enviar_sheets
-from utils.get_sheet_data import get_sheet_data
 from utils.logger import logger
 
 
@@ -156,7 +153,7 @@ class BookingScraperPersonalizado(BookingBaseScraper):
             # Extraer información de cada hotel
             for hotel_element in hotels_elements:
                 hotel_info = self.extract_hotel_info_from_card(
-                    hotel_element, 
+                    hotel_element,
                     ciudad, 
                     checkin_str, 
                     checkout_str
@@ -171,68 +168,142 @@ class BookingScraperPersonalizado(BookingBaseScraper):
         
         return hotels_data
 
-    def extract_hotel_info_from_card(
-        self, 
-        hotel_element, 
-        ciudad: str, 
-        checkin: str, 
-        checkout: str
-    ) -> Dict:
+    def extract_hotel_info_from_card(self, hotel_element, ciudad: str, checkin: str, checkout: str) -> Dict:
         """
-        Extrae información de un elemento de hotel (property-card)
-        
-        Args:
-            hotel_element: Elemento WebDriver del hotel
-            ciudad: Nombre de la ciudad
-            checkin: Fecha de check-in (YYYY-MM-DD)
-            checkout: Fecha de check-out (YYYY-MM-DD)
-            
-        Returns:
-            Diccionario con información del hotel
+        Orquestador principal que delega cada responsabilidad a métodos específicos.
         """
         hotel_data = {}
-        
-        # Nombre del hotel
-        try:
-            hotel_data['hotel'] = self.extract_name()
-        except NoSuchElementException:
-            hotel_data['hotel'] = "No disponible"
-        
-        # Precio - Estrategia con múltiples fallbacks
-        precio_raw = self.extract_price()
-        
-        # Limpiar precio
-        cleaner = DataCleaner()
-        divisa, precio = cleaner.limpiar_precio(precio_raw)
-        hotel_data['divisa'] = divisa
-        hotel_data['precio'] = precio
-        
-        # Puntuación numérica
-        try:
-            puntuacion = self.extract_puntuacion()
-            import re
-            puntuacion = re.findall(r'\d+[,.]?\d*', puntuacion)[0]
-            hotel_data['puntuacion'] = puntuacion
-        except NoSuchElementException:
-            hotel_data['puntuacion'] = "No disponible"
-        
-        # Reseña promedio (calificación cualitativa)
-        try:
-            review = self.extract_calificacion_cualitativa()
-            logger.info(f"✅ Review: {review}")
-            hotel_data['review_promedio'] = review
-        except NoSuchElementException:
-            hotel_data['review_promedio'] = "No disponible"
-        
-        # Número de comentarios usando estrategia robusta heredada
-        hotel_data['comentarios'] = self._extract_reviews_from_card(hotel_element)
-        
-        # Agregar información contextual
+
+        # Cada responsabilidad en su propio método
+        hotel_data['hotel'] = self._extract_hotel_name(hotel_element)
+        hotel_data['precio'], hotel_data['divisa'] = self._extract_price_info(hotel_element)
+        hotel_data['puntuacion'] = self._extract_rating_score(hotel_element)
+        hotel_data['review_promedio'] = self._extract_review_text(hotel_element)
+        hotel_data['comentarios'] = self._extract_reviews_count(hotel_element)
+
+        # Información contextual
         hotel_data['ciudad'] = ciudad
         hotel_data['check_in'] = checkin
         hotel_data['check_out'] = checkout
-        
+
         return hotel_data
+
+    def _extract_hotel_name(self, hotel_element) -> str:
+        """Extrae el nombre del hotel desde la tarjeta."""
+        try:
+            nombre_element = hotel_element.find_element(By.CSS_SELECTOR, '[data-testid="title"]')
+            name = nombre_element.text.strip()
+            logger.info(f"✅ ✅ ✅ ✅ ✅ nombre: {name}")
+            return name
+        except NoSuchElementException:
+            logger.warning("⚠️ Nombre del hotel no encontrado")
+            return "No disponible"
+
+    def _extract_price_info(self, hotel_element) -> tuple[str, str | int]:
+        """Extrae precio con selectores prioritarios más específicos."""
+        price_selectors = [
+            '[data-testid="price-and-discounted-price"]',  # Precio tachado/descuento
+            '[data-testid="taxes-and-charges"] + div .bc946a29db',  # JUSTO después de impuestos
+            '.bc946a29db:has-text("Precio")',  # Contiene "Precio"
+            '[data-testid="availability-rate-information"] .bc946a29db',  # Dentro del contenedor de precio
+        ]
+
+        for selector in price_selectors:
+            try:
+                precio_element = hotel_element.find_element(By.CSS_SELECTOR, selector)
+                precio_raw = precio_element.text.strip()
+
+                # Filtrar textos no-numéricos
+                if self._is_valid_price_text(precio_raw):
+                    cleaner = DataCleaner()
+                    divisa, precio = cleaner.limpiar_precio(precio_raw)
+                    logger.info(f"✅ PRECIO ENCONTRADO: '{precio_raw}' → {divisa} {precio}")
+                    return str(precio), divisa
+
+            except NoSuchElementException:
+                continue
+
+        logger.warning("⚠️ Ningún selector de precio funcionó")
+        return "No disponible", "No disponible"
+
+    def _is_valid_price_text(self, text: str) -> bool:
+        """Valida que el texto contenga un precio real."""
+        # Debe contener números + COP o símbolo de moneda
+        price_pattern = r'(COP|USD|€|\$|\d+[.,]\d{3})'
+        return bool(re.search(price_pattern, text, re.IGNORECASE))
+
+    def _extract_hotel_name(self, hotel_element) -> str:
+        """Extrae nombre evitando 'Se abre en una ventana nueva'."""
+        try:
+            # Selector MÁS ESPECÍFICO: data-testid="title" DENTRO del link del título
+            title_link = hotel_element.find_element(By.CSS_SELECTOR, '[data-testid="title-link"]')
+            nombre_element = title_link.find_element(By.CSS_SELECTOR, '[data-testid="title"]')
+            name = nombre_element.text.strip()
+
+            # Filtrar texto no deseado
+            if "Se abre" in name or len(name) < 3:
+                raise NoSuchElementException("Texto inválido")
+
+            logger.info(f"✅ ✅ ✅ ✅ ✅ nombre: {name}")
+            return name
+        except NoSuchElementException:
+            logger.warning("⚠️ Nombre del hotel no encontrado")
+            return "No disponible"
+
+    def _extract_rating_score(self, hotel_element) -> str:
+        """Extrae puntuación con selector + fallback regex ultra-robusto."""
+
+        # 🎯 1. Selector directo (funciona cuando hay puntuación)
+        try:
+            puntuacion_element = hotel_element.find_element(
+                By.CSS_SELECTOR, '[data-testid="review-score"]'
+            )
+            puntuacion_raw = puntuacion_element.text.strip()
+
+            # Extraer el PRIMER número decimal
+            puntuacion = re.search(r'(\d+[,.]\d+|\d+)', puntuacion_raw)
+            if puntuacion:
+                clean_score = puntuacion.group(1).replace(',', '.')
+                return clean_score
+
+        except NoSuchElementException:
+            logger.error("❌ No [data-testid='review-score'] - Probando fallback")
+
+        # 🎯 2. FALLBACK: Regex directo en todo el texto de la card
+        try:
+            card_text = hotel_element.text
+            # Busca "Puntuación: X,X" o solo "X,X" cerca de palabras clave
+            match = re.search(r'Puntuaci[oó]n[:\s]*(\d+[,.]\d+|\d+)', card_text)
+            if match:
+                puntuacion = match.group(1).replace(',', '.')
+                return puntuacion
+        except:
+            pass
+
+        # 🎯 3. ULTIMO RESORTE: "Nuevo en Booking.com" = Sin puntuación
+        if "Nuevo en Booking.com" in hotel_element.text:
+            return "Hotel Nuevo: No Score"
+
+        logger.warning("⚠️ Puntuación no encontrada")
+        return "No disponible"
+
+    def _extract_review_text(self, hotel_element) -> str:
+        """Extrae la calificación cualitativa (Fantástico, Excelente, etc.)."""
+        try:
+            review_element = hotel_element.find_element(
+                By.CSS_SELECTOR,
+                '.becbee2f63'
+            )
+            review = review_element.text.strip()
+            logger.info(f"✅ ✅ ✅ ✅ ✅ Review: {review}")
+            return review
+        except NoSuchElementException:
+            logger.warning("⚠️ Review cualitativo no encontrado")
+            return "No disponible"
+
+    def _extract_reviews_count(self, hotel_element) -> str:
+        """Extrae el número de comentarios/reviews."""
+        return self._extract_reviews_from_card(hotel_element)
 
     def run(self) -> list:
         """

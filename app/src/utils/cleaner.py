@@ -1,30 +1,17 @@
-import re
-
-from .logger import logger
 
 
 class DataCleaner:
     """Responsabilidad: Limpiar y transformar campos específicos."""
 
-    @staticmethod
-    def limpiar_calificacion(calif_raw):
-        logger.info(f"calificacion  -{calif_raw}-")
-        if not calif_raw or '\n' not in str(calif_raw):
-            return ["", "", ""]
-        partes = calif_raw.split('\n')
-        score = partes[1].strip() if len(partes) > 1 else ""
-        avg_review = partes[2].strip() if len(partes) > 2 else ""
-
-        count_raw = partes[3] if len(partes) > 3 else ""
-        reviews_count = re.sub(r'\D', '', count_raw)
-
-        return [score, avg_review, reviews_count]
-
     def limpiar_precio(self, price_raw):
         if not price_raw:
             return ["", ""]
 
+        precio, divisa = self.extract_min_price(price_raw)
+        if (precio and divisa) and precio != "":
+            return divisa, precio
         partes = str(price_raw).split(" ")
+
         if len(partes) >= 2:
             currency = partes[0].strip()
             price = partes[1].replace('.', '').strip()
@@ -32,47 +19,14 @@ class DataCleaner:
 
         return ["", ""]
 
-    def quitar_tildes(self, texto):
-        # Diccionario con las equivalencias
-        mapeo = {
-            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-            'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U',
-            'ü': 'u', 'Ü': 'U'
-        }
+    def extract_min_price(self, raw_price):
+        multiples_precios = str(raw_price).split("COP ")
 
-        # El regex busca cualquier vocal tildada definida en el mapeo
-        # El patrón r'[áéíóúüÁÉÍÓÚÜ]' busca una coincidencia de carácter individual
-        return re.sub(r'[áéíóúüÁÉÍÓÚÜ]', lambda m: mapeo[m.group()], texto)
+        if len(multiples_precios) >= 3:
+            price_1 = int(multiples_precios[0].strip())
+            price_2 = int(multiples_precios[1].strip())
+            divisa = "COP"
+            return min(price_1, price_2), divisa
 
-
-
-class DataTransformer:
-    """Responsabilidad: Mapear diccionarios a listas para Sheets."""
-
-    def __init__(self, cleaner: DataCleaner):
-        self.cleaner = cleaner
-
-    def transformar_hoteles(self, lista_datos):
-        filas = []
-        for d in lista_datos:
-            # Limpiar precio
-            score_data1 = self.cleaner.limpiar_precio(d.get('precio', ''))
-
-            # Usar datos originales si existen, si no usar los procesados
-            fila = {
-                'divisa': d.get('divisa') or score_data1[0],
-                'precio': d.get('precio') if 'divisa' in d else score_data1[1],
-                'calificacion': d.get('calificacion'),
-                'review_promedio': d.get('review_promedio'),
-                'opiniones': d.get('comentarios'),
-                'puntuacion': d.get('puntuacion', ''),
-                'ciudad': d.get('ciudad', ''),
-                'check_in': d.get('check_in', ''),
-                'check_out': d.get('check_out', ''),
-                'hotel': d.get('hotel', ''),
-                'competidor': d.get('competidor', '')
-            }
-            filas.append(fila)
-
-        return filas
+        return None, None
 
