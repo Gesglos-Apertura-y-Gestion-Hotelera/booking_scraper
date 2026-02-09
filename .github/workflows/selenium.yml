@@ -77,6 +77,18 @@ jobs:
           
           echo "container_id=$CONTAINER_ID" >> $GITHUB_OUTPUT
           
-          # Esperar y mostrar logs
-          docker wait "$CONTAINER_ID" || true
-          docker logs "$CONTAINER_ID"
+          # Seguir logs en tiempo real
+          docker logs -f "$CONTAINER_ID" &
+          LOGS_PID=$!
+          
+          # Esperar a que termine el contenedor
+          docker wait "$CONTAINER_ID"
+          
+          # Detener el seguimiento de logs
+          kill $LOGS_PID 2>/dev/null || true
+
+      - name: Monitor container logs
+        if: always()
+        run: |
+          docker logs -f ${{ steps.run-and-save-container.outputs.container_id }} &
+          docker wait ${{ steps.run-and-save-container.outputs.container_id }}
