@@ -432,10 +432,6 @@ class BookingBaseScraper(ABC):
         
         # Precio (múltiples estrategias)
         precio_raw = self.extract_price()
-
-        # no borrar este logger, fallaria PRECIO Y DIVISAS
-        logger.info(f"\n\n{' '*20}precio RAW: {precio_raw}\n")
-
         divisa, precio = self.cleaner.limpiar_precio(precio_raw)
         
         # Puntuación - Estrategias mejoradas
@@ -444,10 +440,6 @@ class BookingBaseScraper(ABC):
         # Calificación cualitativa
         review_promedio = self.extract_rating()
         logger.info(f"\n\n{' ' * 20}review promedio extract rating: {review_promedio}\n")
-
-        print(f"card:")
-        import pprint as pp
-        pp.pprint(card.text)
         
         # Comentarios (con estrategias robustas)
         comentarios = self._extract_reviews_from_card(card)
