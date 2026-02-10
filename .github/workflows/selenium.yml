@@ -64,11 +64,13 @@ jobs:
           SHEET_DATA: ${{ steps.params.outputs.sheet_data }}
           CHECK_IN: ${{ steps.params.outputs.check_in }}
           CHECK_OUT: ${{ steps.params.outputs.check_out }}
+          WEBAPP_URL: ${{ secrets.WEBAPP_URL }}
         run: |
           CONTAINER_ID=$(docker run -d \
             --shm-size=2gb \
             -e BOOKING_CURRENCY=COP \
             -e BOOKING_COUNTRY=co \
+            -e WEBAPP_URL="$WEBAPP_URL" \
             -e SHEET_DATA="$SHEET_DATA" \
             -e SCRIPT_KEY="$SCRIPT_KEY" \
             -e CHECK_IN="$CHECK_IN" \
@@ -90,5 +92,5 @@ jobs:
       - name: Monitor container logs
         if: always()
         run: |
-          docker logs -f ${{ steps.run-and-save-container.outputs.container_id }} &
-          docker wait ${{ steps.run-and-save-container.outputs.container_id }}
+          docker logs ${{ steps.run-and-save-container.outputs.container_id }}
+
