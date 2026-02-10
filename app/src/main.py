@@ -5,6 +5,7 @@ Main orchestrator - Instancia dinámicamente scrapers según script_key
 import os
 from datetime import datetime
 from typing import Optional
+from dotenv import load_dotenv
 
 from core.chrome_driver import ChromeDriverFactory
 from core.scraper_registry import SCRAPER_REGISTRY
@@ -14,6 +15,8 @@ from utils.get_dates import get_dates
 from utils.get_sheet_data import get_sheet_data
 from utils.logger import logger
 
+# Al inicio del archivo, antes de cualquier os.environ.get()
+load_dotenv()
 
 def import_scraper_class(module_name: str, class_name: str):
     """
@@ -111,8 +114,7 @@ def run_scraper(
 
         logger.info(f"📤 Enviando {len(results)} resultados a Sheets")
 
-        WEBAPP_URL = os.environ.get('WEBAPP_URL',
-                                    'https://script.google.com/macros/s/AKfycbyVaiVyIVzaYOMGZuqxu_TnJkUS8kiphV-Xt3lfESMhkFG2G-jHDcLnJ1twDIjKwY6K/exec')
+        WEBAPP_URL = os.environ.get('WEBAPP_URL', '').strip()
         if not WEBAPP_URL:
             logger.error("💥 ERROR WEB_APP_URL es None")
 
@@ -141,24 +143,38 @@ def main():
     logger.info("=" * 80)
     logger.info("🎬 INICIANDO ORCHESTRATOR DE SCRAPERS")
     logger.info("=" * 80)
-
+    script_key = ""
+    sheet_data = []
     try:
         # Obtener parámetros
         script_key = get_script_key()
+    except ValueError as e:
+        logger.error(f"❌ No{e}")
+    except Exception as e:
+        logger.error(f"❌ No{e}")
+
+    try:
         sheet_data = get_sheet_data()
-
-        # Obtener fechas (pueden ser None si no se proporcionan)
-        try:
-            check_in, check_out = get_dates()
-        except Exception as e:
-            logger.warning(f"⚠️  No se proporcionaron fechas: {e}")
-            check_in, check_out = None, None
-
-        # Validar datos
         if not sheet_data:
             logger.error("❌ No hay datos de hoteles para procesar")
             return
+    except EnvironmentError as e:
+        logger.error(f"❌ No hay parametros {e}")
 
+
+    scripts_sin_fechas = ["clientes_diario",
+                          "clientes_prevision",
+                          "seguimiento_diario"]
+    check_in, check_out = None, None
+    try:
+        if script_key not in scripts_sin_fechas:
+            check_in, check_out = get_dates()
+    except Exception as e:
+        if script_key not in scripts_sin_fechas:
+            logger.error(f"⚠️  No se proporcionaron fechas: {e}")
+
+
+    try:
         # Ejecutar scraper
         results = run_scraper(
             script_key=script_key,

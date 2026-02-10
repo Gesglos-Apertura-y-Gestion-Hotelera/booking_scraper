@@ -159,6 +159,7 @@ class BookingScraperPersonalizado(BookingBaseScraper):
                     checkout_str
                 )
                 if hotel_info:
+                    logger.info(f" ✅   ✅   ✅ Hotel info {hotel_info}")
                     hotels_data.append(hotel_info)
             
             logger.info(f"✅ {len(hotels_data)} hoteles procesados")
