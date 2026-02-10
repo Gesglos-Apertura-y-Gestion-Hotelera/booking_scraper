@@ -1,7 +1,7 @@
 import os
 import sys
 from typing import Tuple
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from .logger import logger
 
@@ -18,9 +18,9 @@ def get_dates() -> Tuple[datetime, datetime]:
     # 2. Args FALLBACK (individual)
     if len(args) >= 4:
         if not check_in_raw:
-            check_in_raw = args[2].strip() if len(args) > 2 else ''
+            check_in_raw = args[2].strip() if len(args) > 2 else date.today().strftime('%Y-%m-%d')
         if not check_out_raw:
-            check_out_raw = args[3].strip() if len(args) > 3 else ''
+            check_out_raw = args[3].strip() if len(args) > 3 else (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 
     if not check_in_raw or not check_out_raw:
         logger.error(f"Faltan fechas: check_in_raw='{check_in_raw}', check_out_raw='{check_out_raw}'")
