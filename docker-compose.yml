@@ -1,8 +1,16 @@
 services:
   scraper:
+    env_file:
+      - .env
     build:
       context: .
-      dockerfile: dockerfile  # Aquí especificas cuál archivo usar
-    shm_size: '2gb'                  # Crucial para evitar cierres de Chrome
-    # El comando recibe el parámetro dinámicamente
-    command: ["python", "src/main.py", "{{script_key}}"]
+      dockerfile: dockerfile
+    shm_size: '2gb'
+    environment:
+      - SCRIPT_KEY=${SCRIPT_KEY}
+      - SHEET_DATA=${SHEET_DATA}
+      - CHECK_IN=${CHECK_IN}
+      - CHECK_OUT=${CHECK_OUT}
+      - BOOKING_CURRENCY=${BOOKING_CURRENCY:-COP}
+      - BOOKING_COUNTRY=${BOOKING_COUNTRY:-co}
+      - WEBAPP_URL=${WEBAPP_URL}
