@@ -112,7 +112,7 @@ def run_scraper(
         logger.info(f"📤 Enviando {len(results)} resultados a Sheets")
 
         WEBAPP_URL = os.environ.get('WEBAPP_URL',
-                                    'https://script.google.com/macros/s/AKfycbxtuYSuQeyy7n5PTPs2upfcTefVLQeLa8BBPmMJAy09n1AG8zlIGUDDK7i-5i-ElgZv/exec')
+                                    'https://script.google.com/macros/s/AKfycbyVaiVyIVzaYOMGZuqxu_TnJkUS8kiphV-Xt3lfESMhkFG2G-jHDcLnJ1twDIjKwY6K/exec')
         if not WEBAPP_URL:
             logger.error("💥 ERROR WEB_APP_URL es None")
 
