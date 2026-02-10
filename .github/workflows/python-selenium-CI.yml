@@ -1,5 +1,14 @@
 name: Selenium CI
-on: [pull_request]
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+  push:
+    branches:
+      - main
+      - master
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -12,7 +21,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Setup Chrome + Driver (Simple)
+      - name: Setup Chrome + Driver
         uses: browser-actions/setup-chrome@v2
         with:
           install-dependencies: true
@@ -26,10 +35,5 @@ jobs:
         run: pytest
         env:
           PYTHONPATH: .
-          CHROME_BIN: /usr/bin/google-chrome
-
-      - name: Ejecutar Tests (Headless)
-        run: pytest
-        env:
           CHROME_BIN: /usr/bin/google-chrome
 
