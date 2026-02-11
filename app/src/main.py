@@ -5,8 +5,8 @@ Main orchestrator - Instancia dinámicamente scrapers según script_key
 import os
 from datetime import datetime
 from typing import Optional
+from dotenv import load_dotenv
 import dotenv
-# from dotenv import load_dotenv
 
 from core.chrome_driver import ChromeDriverFactory
 from core.scraper_registry import SCRAPER_REGISTRY
@@ -17,7 +17,7 @@ from utils.get_sheet_data import get_sheet_data
 from utils.logger import logger
 
 
-load_dotenv()
+dotenv.load_dotenv()
 
 def import_scraper_class(module_name: str, class_name: str):
     """
