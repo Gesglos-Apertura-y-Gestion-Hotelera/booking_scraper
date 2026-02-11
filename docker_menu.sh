@@ -33,7 +33,7 @@ run_docker() {
     local check_out=$4
 
     echo "🚀 Ejecutando: $script_key"
-    echo "📊 WEBAPP_URL: ${WEBAPP_URL:0:50}..."
+    echo "📊 WEBAPP_URL: ${WEBAPP_URL:0:6}..."
     echo "📊 Sheet Data: ${sheet_data:0:100}..."
 
     # IMPORTANTE: Pasar las variables con -e
