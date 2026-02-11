@@ -93,27 +93,33 @@ sequenceDiagram
     AS1 -->> S: Estado / Confirmación
 ```
 Test en local, para poder correr el proyecto de forma correcta use lo siguientes comandos segun sea el caso que va a probar:
+```
+bash ./docker_menu.sh 
+```
+luego de ejecutar el comando aparecera el siguiente mensaje que prueba cada caso de uso
 
-clientes_diario
-### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app clientes_diario '[{"ciudad":"Mariquita","hotel":"Hotel Brisas La Gaviota Mariquit-Tolima","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""},{"ciudad":"Medellin","hotel":"Botánica Casa Hotel Manilab y HOUSY","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""}]' 2027-02-01 2027-02-02  
-
-clientes_prevision
-### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app clientes_prevision '[{"ciudad":"Mariquita","hotel":"Hotel Brisas La Gaviota Mariquit-Tolima","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""},{"ciudad":"Medellin","hotel":"Botánica Casa Hotel Manilab y HOUSY","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""}]' "2027-02-01" "2027-02-05"
-
-competencia_diario
-### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app competencia_diario '[{"hotel": "Porto Marina Hotel","competidor": "Hotel Bambu Guatape","ciudad": "Guatapé","buscar": "Hotel Bambu Guatape, Guatapé"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]'
-
-competencia_prevision 
-### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app competencia_prevision '[{"hotel": "Hotel Brisas La Gaviota Mariquit-Tolima","competidor": "Arvum Hotel Boutique","ciudad": "guatape","buscar": "Arvum Hotel Boutique, El peñol"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2027-04-01" "2027-04-05"
-
-seguimiento_diario
-### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app seguimiento_diario '[{"hotel": "Porto Marina Hotel","competidor": "Hotel Bambu Guatape","ciudad": "Guatapé","buscar": "Hotel Bambu Guatape, Guatapé"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2027-04-01" "2027-04-05"
-
-personalizado
-### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app personalizado '[{"hotel": "Porto Marina Hotel","competidor": "Hotel Bambu Guatape","ciudad": "Guatapé","buscar": "Hotel Bambu Guatape, Guatapé"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2027-04-01" "2027-04-05"
-
+```
+Selecciona un contenedor Docker (1-7):
+1) Scraper Clientes Diario
+2) Scraper Clientes Prevision
+3) Scraper Competencia Diario
+4) Scraper Competencia Prevision
+5) Scraper Seguimiento Diario
+6) Personalizado
+7) Todos
+Opción: 1
+🔨 Construyendo imagen Docker...
+```
 
 # Instalacion de librerias:
+```
+poetry env activate
+```
+el resultado sera un comando para activar el entorno virtual de poetry para este proyecto, luego de usar ese comando que se debe ver algo asi:
+```
+source /home/user/.cache/pypoetry/virtualenvs/gesglosscraper-8hW_l-Xj-py3.11/bin/activate
+```
+se agrega la libreria, con esto se instala en el entorno virtual y posterior a eso se exporta a un nuevo archivo requirements.txt
 ```
 poetry add aqui_va_la_libreria_nueva
 ```
@@ -122,11 +128,3 @@ poetry add aqui_va_la_libreria_nueva
 ```
 poetry export --without-hashes -f requirements.txt | sed 's/ ; .*//' > requirements.txt
 ```
-
-
-# Pruebas de esfuerzo base: 
-## para probar el flujo completo de la aplicacion, use este comando que emplea informacion base que permite correr todos los flujos de trabajo de forma independiente en un solo comando
-### sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app clientes_diario '[{"ciudad":"Mariquita","hotel":"Hotel Brisas La Gaviota Mariquit-Tolima","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""},{"ciudad":"Medellin","hotel":"Botánica Casa Hotel Manilab y HOUSY","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""}]' 2027-02-01 2027-02-02   && sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app clientes_prevision '[{"ciudad":"Mariquita","hotel":"Hotel Brisas La Gaviota Mariquit-Tolima","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""},{"ciudad":"Medellin","hotel":"Botánica Casa Hotel Manilab y HOUSY","habitaciones":"","ocupadas":"","tarifa":"","total_ingresos":"","registro":""}]' "2027-02-01" "2027-02-05" && sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app competencia_diario '[{"hotel": "Porto Marina Hotel","competidor": "Hotel Bambu Guatape","ciudad": "Guatapé","buscar": "Hotel Bambu Guatape, Guatapé"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' && sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app competencia_prevision '[{"hotel": "Hotel Brisas La Gaviota Mariquit-Tolima","competidor": "Arvum Hotel Boutique","ciudad": "El peñol","buscar": "Arvum Hotel Boutique, El peñol"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2027-04-01" "2027-04-05" && sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app seguimiento_diario '[{"hotel": "Porto Marina Hotel","competidor": "Hotel Bambu Guatape","ciudad": "Guatapé","buscar": "Hotel Bambu Guatape, Guatapé"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2027-04-01" "2027-04-05" && sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app personalizado '[{"hotel": "Porto Marina Hotel","competidor": "Hotel Bambu Guatape","ciudad": "Guatapé","buscar": "Hotel Bambu Guatape, Guatapé"},{"hotel": "1714 Hotel Boutique Guatapé","competidor": "El Tropico Boutique Hotel","ciudad": "El peñol","buscar": "El Tropico Boutique Hotel, El peñol"}]' "2027-04-01" "2027-04-05"
-
-
- sudo docker build -f dockerfile -t selenium-app . && docker run --shm-size=2gb selenium-app clientes_diario '[{"ciudad":"Mariquita","hotel":"Hotel Brisas La Gaviota Mariquit  -  Tolima"},{"ciudad":"EL PEÑOL  -  GUATAPÉ","hotel":"Domus Glamping Guatapé"},{"ciudad":"EL PEÑOL  -  GUATAPÉ","hotel":"1714 Hotel Boutique Guatapé"},{"ciudad":"GUATAPÉ","hotel":"Hotel Spa Bliss Guatape"},{"ciudad":"MARINILLA  -  ANTIOQUIA","hotel":"Aeropuerto Rionegro  -  Medellin Hotel Mansión Sant Serrant"},{"ciudad":"GUATAPÉ","hotel":"Hobbit Hotel Ecolodge  -  Guatapé"},{"ciudad":"El peñol  -  Guatapé","hotel":"Marina Navegar  -  El peñol  -  Guatape"},{"ciudad":"EL PEÑOL  -  GUATAPÉ","hotel":"Hotel Omaga El peñol  -  Guatape"},{"ciudad":"GUATAPÉ","hotel":"Hotel Stay Guatape a dos cuadras del parque"},{"ciudad":"EL PEÑOL  -  GUATAPÉ","hotel":"Hotel Campestre Alto lindo en Guatapé"},{"ciudad":"EL PEÑOL  -  GUATAPÉ","hotel":"Glamping con jacuzzi y cocina -  El Peñol a 30 minutos de Guatapé"},{"ciudad":"EL PEÑOL  -  GUATAPÉ","hotel":"Finca con jacuzzi a 15min de Guatape"}]'

@@ -2,28 +2,24 @@
 Clase base para scrapers de Booking.com
 Versión optimizada - Elimina redundancias y consolida lógica común
 """
-import json
 import re
 import time
 from abc import ABC, abstractmethod
-from re import search
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Tuple
 
-from numpy.core.multiarray import result_type
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from utils.cleaner import DataCleaner
 from utils.logger import logger
-from .data_models import HotelSearchData, HotelResult
 
 
 class BookingBaseScraper(ABC):
     """Clase base abstracta para scrapers de Booking"""
 
     BOOKING_BASE_URL = 'https://www.booking.com'
-    
+
     # Palabras clave para calificaciones cualitativas
     QUALITATIVE_KEYWORDS = [
         'Fantástico', 'Excelente', 'Muy bueno', 'Bueno', 'Agradable',
@@ -39,7 +35,7 @@ class BookingBaseScraper(ABC):
     # ============================================================
 
     def _try_extract(
-        self, 
+        self,
         element_or_driver,
         selectors: List[Tuple[str, str]],
         extract_fn=None,
@@ -71,18 +67,18 @@ class BookingBaseScraper(ABC):
                     elem = element_or_driver.find_element(By.XPATH, selector)
                 else:
                     continue
-                
+
                 text = elem.text.strip()
-                
+
                 # Aplicar función de procesamiento si existe
                 if extract_fn:
                     text = extract_fn(text)
-
+                logger.info(f"Trying {selector} with text: {text}")
                 return text
-                    
+
             except NoSuchElementException:
                 continue
-        
+
         return default
 
     def _extract_with_regex(
@@ -109,7 +105,7 @@ class BookingBaseScraper(ABC):
         def extract_fn(text):
             match = re.search(regex_pattern, text, re.IGNORECASE)
             return match.group(group) if match else None
-        
+
         return self._try_extract(element_or_driver, selectors, extract_fn, default)
 
     # ============================================================
@@ -169,21 +165,47 @@ class BookingBaseScraper(ABC):
     def extract_price(self) -> str:
         """Extrae precio de página individual con múltiples estrategias"""
         selectors = [
-            ('div.abf093bdfe.fc23698243', 'CSS'),
-            ('div.fff1944c52.e1ca2942a5', 'CSS'),
             ('//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
             ('[data-testid="price"]', 'CSS'),
-            ('.//span[@data-testid="price-and-discounted-price"]', 'XPATH'),
             ('.//span[@data-testid="price-alternative"]', 'XPATH'),
             ('.//span[@data-testid="price"]', 'XPATH'),
+            ('div.abf093bdfe.fc23698243', 'CSS'),
+            ('div.fff1944c52.e1ca2942a5', 'CSS'),
         ]
-        
+
         def clean_price(text):
             return text.replace("Desde ", "").replace(".", "").strip() if text else None
-        
-        result = self._try_extract(self.driver, selectors, clean_price, "0")
 
-        return result
+        property_cards=None
+
+        try:
+            # Primera estrategia, busque por posibles sitios con Selectors
+            property_cards = self.driver.find_elements(By.XPATH, '//div[@data-testid="property-card"]')
+
+            for card in property_cards:  # ✅ Ahora card es un WebElement individual
+                result=self._try_extract(card, selectors, clean_price, "0")
+                if result:
+                    return result
+        except Exception as e:
+            logger.error(f" Strategie 1 Failed to extract price: {e}")
+
+        # segunda estrategia, buscar todos los precios con COP al comienzo y devolver la primera
+        if property_cards:
+            for i, card in enumerate(property_cards[:1], 1):
+                try:
+                    precios_cop = [el.text.strip() for el in
+                                   card.find_elements(By.XPATH, './/*[contains(text(), "COP")]') if el.text.strip()]
+
+                    if precios_cop:
+                        precio_principal = precios_cop[0]  # Primer precio COP
+                        if "Desde" in precio_principal:
+                            precio_cop=re.sub(r"Desde ", "", precio_principal, flags=re.IGNORECASE)
+                        return precio_cop
+                    else:
+                        logger.warning("    ❌ Ningún precio COP encontrado")
+                except Exception as e:
+                    logger.warning(f"error {e}")
+                    pass
 
     def extract_puntuacion(self) -> str:
         """
@@ -205,7 +227,7 @@ class BookingBaseScraper(ABC):
                 return score
         except NoSuchElementException:
             pass
-        
+
         # ESTRATEGIA 2: Por clases CSS conocidas (incluyendo variantes observadas)
         selectors = [
             ('div.bc946a29db', 'CSS'),
@@ -216,15 +238,15 @@ class BookingBaseScraper(ABC):
             ('div[class*="f63b14ab7a"]', 'CSS'),              # Partial match
         ]
         result = self._extract_with_regex(
-            self.driver, 
-            selectors, 
+            self.driver,
+            selectors,
             r'(\d+[.,]\d+)',
             default=None
         )
         if result:
             logger.debug(f"✓ Puntuación por CSS: {result}")
             return result
-        
+
         # ESTRATEGIA 3: Por aria-label
         try:
             elements = self.driver.find_elements(
@@ -241,7 +263,7 @@ class BookingBaseScraper(ABC):
                         return score
         except Exception:
             pass
-        
+
         # ESTRATEGIA 4: Buscar divs que contengan SOLO un número decimal
         try:
             divs = self.driver.find_elements(
@@ -255,7 +277,7 @@ class BookingBaseScraper(ABC):
                     return text
         except Exception:
             pass
-        
+
         # ESTRATEGIA 5: Regex en page_source (último recurso)
         try:
             patterns = [
@@ -271,7 +293,7 @@ class BookingBaseScraper(ABC):
                     return score
         except Exception:
             pass
-        
+
         logger.warning("⚠️ No se pudo extraer puntuación")
         return "No disponible"
 
@@ -286,7 +308,7 @@ class BookingBaseScraper(ABC):
         result = self._try_extract(self.driver, class_selectors, default=None)
         if result:
             return result
-        
+
         # Estrategia 2: Regex en page_source
         pattern = r'\b(' + '|'.join(self.QUALITATIVE_KEYWORDS) + r')\b'
         match = re.search(pattern, self.driver.page_source, re.IGNORECASE)
@@ -313,16 +335,16 @@ class BookingBaseScraper(ABC):
         """Extrae número de comentarios de página individual"""
         # Estrategia 1: Por clase CSS
         selectors = [('div[class="fff1944c52 fb14de7f14 eaa8455879"]', 'CSS')]
-        
+
         def clean_comments(text):
             cleaned = re.sub(r'\s*comentarios?', '', text, flags=re.IGNORECASE)
             cleaned = re.sub(r'[.,]', '', cleaned)
             return cleaned if cleaned.isdigit() else None
-        
+
         result = self._try_extract(self.driver, selectors, clean_comments, None)
         if result:
             return result
-        
+
         # Estrategia 2: Regex en page_source
         matches = re.findall(
             r'\b(\d{1,3}(?:[.,]\d{3})*|\d{1,6})\s*comentarios?\b',
@@ -331,7 +353,7 @@ class BookingBaseScraper(ABC):
         )
         if matches and len(matches) > 1:
             return re.sub(r'[.,]', '', matches[1])
-        
+
         return "0"
 
     # ============================================================
@@ -339,9 +361,9 @@ class BookingBaseScraper(ABC):
     # ============================================================
 
     def extract_hotels_from_city(
-        self, 
-        ciudad: str, 
-        checkin: str, 
+        self,
+        ciudad: str,
+        checkin: str,
         checkout: str
     ) -> List[Dict]:
         """
@@ -360,15 +382,15 @@ class BookingBaseScraper(ABC):
 
         try:
             self.open_url(url)
-            
+
             cards = self.driver.find_elements(By.XPATH, '//div[@data-testid="property-card"]')
 
             if not cards:
                 logger.warning(f"⚠️ No se encontraron hoteles en {ciudad}")
                 return []
-            
+
             logger.info(f"📊 Encontrados {len(cards)} hoteles")
-            
+
             hotels_data = []
             for idx, card in enumerate(cards, 1):
                 try:
@@ -378,10 +400,10 @@ class BookingBaseScraper(ABC):
                         logger.debug(f"  [{idx}/{len(cards)}] ✓ {hotel_info.get('hotel', 'N/A')}")
                 except Exception as e:
                     logger.warning(f"  [{idx}/{len(cards)}] ✗ {e}")
-            
+
             logger.info(f"✅ {ciudad}: {len(hotels_data)} hoteles procesados")
             return hotels_data
-            
+
         except Exception as e:
             logger.error(f"❌ Error al Extraer desde la card property {ciudad}: {e}")
             return []
@@ -408,20 +430,20 @@ class BookingBaseScraper(ABC):
         """
         # Nombre
         hotel_name = self.extract_name()
-        
+
         # Precio (múltiples estrategias)
         precio_raw = self.extract_price()
         divisa, precio = self.cleaner.limpiar_precio(precio_raw)
-        
+
         # Puntuación - Estrategias mejoradas
         puntuacion = self._extract_puntuacion_from_card(card)
-        
+
         # Calificación cualitativa
         review_promedio = self.extract_calificacion_cualitativa()
 
         # Comentarios (con estrategias robustas)
         comentarios = self._extract_reviews_from_card(card)
-        
+
         return {
             'hotel': hotel_name,
             'divisa': divisa,
@@ -450,13 +472,13 @@ class BookingBaseScraper(ABC):
                 By.XPATH,
                 './/div[@data-testid="review-score"]/div[1]'
             ).text.strip()
-            
+
             if re.match(r'^\d+[.,]\d+$', score):
                 logger.debug(f"✓ Puntuación card (data-testid): {score}")
                 return score
         except NoSuchElementException:
             pass
-        
+
         # ESTRATEGIA 2: Por clases CSS (incluyendo variantes)
         selectors = [
             ('div.bc946a29db', 'CSS'),
@@ -473,7 +495,7 @@ class BookingBaseScraper(ABC):
         if result:
             logger.debug(f"✓ Puntuación card (CSS): {result}")
             return result
-        
+
         # ESTRATEGIA 3: Buscar en TODOS los divs de review-score
         try:
             review_section = card.find_element(
@@ -481,7 +503,7 @@ class BookingBaseScraper(ABC):
                 './/div[@data-testid="review-score"]'
             )
             divs = review_section.find_elements(By.XPATH, './/div')
-            
+
             for div in divs[:5]:  # Revisar los primeros 5 divs
                 text = div.text.strip()
                 # Buscar SOLO número decimal
@@ -490,7 +512,7 @@ class BookingBaseScraper(ABC):
                     return text
         except NoSuchElementException:
             pass
-        
+
         # ESTRATEGIA 4: Por aria-label
         try:
             elements = card.find_elements(
@@ -507,7 +529,7 @@ class BookingBaseScraper(ABC):
                         return score
         except Exception():
             pass
-        
+
         logger.debug("⚠️ No se pudo extraer puntuación de la card")
         return "No disponible"
 
@@ -531,7 +553,7 @@ class BookingBaseScraper(ABC):
         )
         if result:
             return result.replace('.', '')
-        
+
         # Estrategia 2: Sección completa de review-score
         result = self._extract_with_regex(
             card,
@@ -541,7 +563,7 @@ class BookingBaseScraper(ABC):
         )
         if result:
             return result.replace('.', '')
-        
+
         # Estrategia 3: Cualquier elemento con "comentarios"
         result = self._extract_with_regex(
             card,
@@ -549,14 +571,27 @@ class BookingBaseScraper(ABC):
             r'(\d+(?:\.\d+)?)',
             default="0"
         )
-        
+
         return result.replace('.', '')
 
     def open_url(self, url:str):
         self.driver.get(url)
-        time.sleep(1)
+        time.sleep(5)
         self.close_popup()
-        time.sleep(1)
+        time.sleep(2)
+        self.take_screenshot()
+
+    def take_screenshot(self):
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+
+        wait = WebDriverWait(self.driver, 15)
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="price-and-discounted-price"]')))
+
+        self.driver.save_screenshot("debug_booking.png")
 
     # ============================================================
     # Méthodo ABSTRACTO

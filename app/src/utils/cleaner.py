@@ -8,8 +8,13 @@ class DataCleaner:
             return ["", ""]
 
         precio, divisa = self.extract_min_price(price_raw)
+
         if (precio and divisa) and precio != "":
             return divisa, precio
+
+        if (precio and not divisa) and precio != "":
+            return "COP ", precio
+
         partes = str(price_raw).split(" ")
 
         if len(partes) >= 2:
