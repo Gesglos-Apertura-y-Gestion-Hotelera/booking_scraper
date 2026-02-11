@@ -176,23 +176,31 @@ class BookingBaseScraper(ABC):
         def clean_price(text):
             return text.replace("Desde ", "").replace(".", "").strip() if text else None
 
-        # Primera estrategia, busque por posibles sitios con Selectors
-        property_cards = self.driver.find_elements(By.XPATH, '//div[@data-testid="property-card"]')
-        result=self._try_extract(property_cards, selectors, clean_price, "0")
-        if result:
-            return result
+        property_cards=None
+
+        try:
+            # Primera estrategia, busque por posibles sitios con Selectors
+            property_cards = self.driver.find_elements(By.XPATH, '//div[@data-testid="property-card"]')
+
+            for card in property_cards:  # ✅ Ahora card es un WebElement individual
+                result=self._try_extract(card, selectors, clean_price, "0")
+                if result:
+                    return result
+        except Exception as e:
+            logger.error(f" Strategie 1 Failed to extract price: {e}")
 
         # segunda estrategia, buscar todos los precios con COP al comienzo y devolver la primera
         if property_cards:
-            logger.info("\n=== DEBUG COMPLETO ===")
             for i, card in enumerate(property_cards[:1], 1):
                 try:
                     precios_cop = [el.text.strip() for el in
                                    card.find_elements(By.XPATH, './/*[contains(text(), "COP")]') if el.text.strip()]
+
                     if precios_cop:
                         precio_principal = precios_cop[0]  # Primer precio COP
-                        logger.info(f" ❌   ✅ Precio principal: {precio_principal}")
-                        return "COP "+ precio_principal
+                        if "Desde" in precio_principal:
+                            precio_cop=re.sub(r"Desde ", "", precio_principal, flags=re.IGNORECASE)
+                        return precio_cop
                     else:
                         logger.warning("    ❌ Ningún precio COP encontrado")
                 except Exception as e:
