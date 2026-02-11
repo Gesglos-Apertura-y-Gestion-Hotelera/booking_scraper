@@ -37,7 +37,8 @@ run_docker() {
     echo "📊 Sheet Data: ${sheet_data:0:100}..."
 
     # IMPORTANTE: Pasar las variables con -e
-    sudo docker run --rm --shm-size=2gb \
+    sudo docker run --shm-size=2gb \
+        -v "$(pwd):/app/screenshots" \
         -e "BOOKING_CURRENCY=${BOOKING_CURRENCY}" \
         -e "BOOKING_COUNTRY=${BOOKING_COUNTRY}" \
         -e "WEBAPP_URL=${WEBAPP_URL}" \
@@ -46,6 +47,8 @@ run_docker() {
         -e "CHECK_IN=${check_in}" \
         -e "CHECK_OUT=${check_out}" \
         selenium-app
+
+    sudo docker cp "${CONTAINER_ID}":/app/debug_booking.png ./debug_booking.png
 }
 
 # Construir imagen una sola vez

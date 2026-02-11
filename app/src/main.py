@@ -5,7 +5,8 @@ Main orchestrator - Instancia dinámicamente scrapers según script_key
 import os
 from datetime import datetime
 from typing import Optional
-from dotenv import load_dotenv
+import dotenv
+# from dotenv import load_dotenv
 
 from core.chrome_driver import ChromeDriverFactory
 from core.scraper_registry import SCRAPER_REGISTRY
@@ -15,7 +16,7 @@ from utils.get_dates import get_dates
 from utils.get_sheet_data import get_sheet_data
 from utils.logger import logger
 
-# Al inicio del archivo, antes de cualquier os.environ.get()
+
 load_dotenv()
 
 def import_scraper_class(module_name: str, class_name: str):
@@ -116,7 +117,7 @@ def run_scraper(
 
         WEBAPP_URL = os.environ.get('WEBAPP_URL', '').strip()
         if not WEBAPP_URL:
-            logger.error("💥 ERROR WEB_APP_URL es None")
+            logger.error("💥 ERROR WEBAPP_URL es None")
 
         enviar_sheets(lista_datos=results,
                         url_apps_script=WEBAPP_URL,
@@ -186,7 +187,8 @@ def main():
         # Resumen final
         logger.info("=" * 80)
         logger.info(f"✅ PROCESO COMPLETADO EXITOSAMENTE")
-        logger.info(f"📊 Total de registros: {len(results)}")
+        import pprint as pp
+        logger.info(f"📊 Total de registros: {len(results)} resultados: {pp.pprint(results)}")
         logger.info("=" * 80)
 
     except Exception as e:
