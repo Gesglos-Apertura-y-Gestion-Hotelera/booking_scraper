@@ -3,17 +3,12 @@
 Web Scraping Competencia Diario
 Scraping diario de precios de competidores en Booking.com
 """
-import os
 import re
-import sys
-import time
+
 from datetime import datetime, timedelta
 
 from core.scraper import BookingBaseScraper
-from core.chrome_driver import ChromeDriverFactory
 from utils.cleaner import DataCleaner
-from utils.enviar_sheets import enviar_sheets
-from utils.get_sheet_data import get_sheet_data
 from utils.logger import logger
 
 
@@ -35,7 +30,7 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
         checkout_str = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 
         logger.info(f"📅 Check-in: {checkin_str} | Check-out: {checkout_str}")
-
+        cleaner = DataCleaner()
         results = []
         for comp_data in self.competidores:
             if not isinstance(comp_data, dict):
@@ -60,7 +55,6 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
 
             self.open_url(url)
 
-            rating_details = None
             # Extraer datos usando métodos heredados
             try:
                 nombre = self.extract_name()
@@ -76,21 +70,18 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
                 puntuacion = "0"
                 comentarios = "No disponible"
 
-            cleaner = DataCleaner()
             divisa, precio = cleaner.limpiar_precio(precio)
             results.append({
-                'hotel': nombre,
+                'hotel': hotel,
                 'divisa': divisa,
                 'precio': precio,
                 'review_promedio': calificacion_cualitativa,
                 'comentarios': comentarios,
                 'puntuacion': puntuacion,
-                'competidor': competidor,
+                'competidor': nombre,
                 'ciudad': ciudad,
                 'check_in': checkin_str,
                 'check_out': checkout_str
             })
-
-            logger.info(f"✅  rating_details {rating_details} ")
 
         return results

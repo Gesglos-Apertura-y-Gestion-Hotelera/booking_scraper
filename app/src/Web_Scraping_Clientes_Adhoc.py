@@ -2,18 +2,13 @@
 Scraper Ad-Hoc para búsqueda de clientes en rango de fechas
 Hereda y reutiliza ClientesDiarioScraper
 """
-import os
 import re
-import time
 from datetime import datetime, timedelta
 
 from core.scraper import BookingBaseScraper
-from core.chrome_driver import ChromeDriverFactory
 from utils.cleaner import DataCleaner
-from utils.enviar_sheets import enviar_sheets
 from utils.logger import logger
 
-WEBAPP_URL = os.environ.get('WEBAPP_URL')
 
 class ClientesDiarioScraperAdHoc(BookingBaseScraper):
     """
