@@ -61,15 +61,15 @@ def run_scraper(
         logger.info(f"📋 Opciones válidas: {', '.join(SCRAPER_REGISTRY.keys())}")
         raise ValueError(f"Script key inválido: {script_key}")
 
-    scraper_config = SCRAPER_REGISTRY[script_key]
-    logger.info(f"🚀 Iniciando: {scraper_config['description']}")
-    logger.info(f"📍 📍 📍 📦 📍 📍 📍  Módulo: {scraper_config['module']}")
-    logger.info(f"🏷️ Clase: {scraper_config['class']}")
-    logger.info(f"📊 Sheet destino: {scraper_config['sheet_name']}")
+    scraper_config = SCRAPER_REGISTRY.get(script_key) 
+    logger.info(f"🚀 Iniciando: {scraper_config.get('description')}")
+    logger.info(f"📍 📍 📍 📦 📍 📍 📍  Módulo: {scraper_config.get('module')}")
+    logger.info(f"🏷️ Clase: {scraper_config.get('class')}")
+    logger.info(f"📊 Sheet destino: {scraper_config.get('sheet_name')}")
     logger.info(f"🏨 Registros a procesar: {len(sheet_data)}")
 
     # Validar fechas si son requeridas
-    if scraper_config['requires_dates']:
+    if scraper_config.get('requires_dates'):
         if not check_in or not check_out:
             logger.error("❌ Este scraper requiere fechas check_in y check_out")
             raise ValueError("Fechas requeridas para este scraper")
