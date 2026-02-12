@@ -25,7 +25,7 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
         """
         Args:
             driver: Instancia de Selenium WebDriver
-            hoteles: Lista de dicts con 'hotel'/'Hotel' y 'ciudad'/'Ciudad'
+            hoteles: Lista de dicts con 'hotel'/'hotel' y 'ciudad'/'ciudad'
             check_in: Fecha inicial (datetime)
             check_out: Fecha final (datetime)
         """
@@ -40,7 +40,7 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
         Itera día por día desde check_in hasta check_out.
         """
         results = []
-
+        cleaner = DataCleaner()
         # Iterar sobre cada día en el rango de fechas
         fecha_actual = self.check_in
 
@@ -57,52 +57,68 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                     logger.error(f"❌ Elemento no es dict: {type(hotel_data)}")
                     continue
 
-                # Normalizar claves (mayúsculas o minúsculas)
-                Hotel = hotel_data.get('hotel', '')
+                # Normalizar claves
+                hotel = hotel_data.get('hotel', '')
                 ciudad = hotel_data.get('ciudad', '')
 
-                if Hotel == '' or ciudad == '':
+                if hotel == '' or ciudad == '':
                     logger.warning(f"⚠️ Datos incompletos: {hotel_data}")
                     continue
 
                 # Construir búsqueda
-                hotel_ciudad = f"{Hotel} - {ciudad}"
+                hotel_ciudad = f"{hotel} - {ciudad}"
                 hotel_ciudad = re.sub(r"\s{1,10}", "+", hotel_ciudad)
 
                 # Usar el metodo heredado de BookingBaseScraper
                 url = self.build_search_url(hotel_ciudad, checkin_str, checkout_str)
-                logger.info(f"🔍 {Hotel} | {checkin_str}")
+                logger.info(f"🔍 {hotel} | {checkin_str}")
                 self.open_url(url)
 
-                # Extraer datos usando métodos heredados
+                # Extraer datos usando métodos heredados (con manejo individual de errores)
+                nombre = hotel  # Valor por defecto
+                precio = "0"
+                puntuacion = "0"
+                calificacion_cualitativa = "No disponible"
+                comentarios = "No disponible"
+
                 try:
                     nombre = self.extract_name()
+                except Exception as e:
+                    logger.warning(f"⚠️ {hotel} ({checkin_str}): Falló extracción de NOMBRE: {e}")
+
+                try:
                     precio = self.extract_price()
-                    puntuacion = self.extract_puntuacion(),
-                    calificacion_cualitativa = self.extract_calificacion_cualitativa(),
+                except Exception as e:
+                    logger.warning(f"⚠️ {hotel} ({checkin_str}): Falló extracción de PRECIO: {e}")
+
+                try:
+                    puntuacion = self.extract_puntuacion()
+                except Exception as e:
+                    logger.warning(f"⚠️ {hotel} ({checkin_str}): Falló extracción de PUNTUACIÓN: {e}")
+
+                try:
+                    calificacion_cualitativa = self.extract_calificacion_cualitativa()
+                except Exception as e:
+                    logger.warning(f"⚠️ {hotel} ({checkin_str}): Falló extracción de CALIFICACIÓN CUALITATIVA: {e}")
+
+                try:
                     comentarios = self.extract_comentarios()
                 except Exception as e:
-                    logger.warning(f"⚠️ {Hotel} ({checkin_str}): {e}")
-                    nombre = Hotel
-                    precio = "0"
-                    calificacion_cualitativa = "No disponible"
-                    puntuacion = "0"
-                    comentarios = "No disponible"
+                    logger.warning(f"⚠️ {hotel} ({checkin_str}): Falló extracción de COMENTARIOS: {e}")
 
+                divisa, precio = cleaner.limpiar_precio(precio)
+                results.append({
+                    'hotel': nombre,
+                    'divisa': divisa,
+                    'precio': precio,
+                    'review_promedio': calificacion_cualitativa,
+                    'comentarios': comentarios,
+                    'puntuacion': puntuacion,
+                    'ciudad': ciudad,
+                    'check_in': checkin_str,
+                    'check_out': checkout_str
+                })
 
-            cleaner = DataCleaner()
-            divisa, precio = cleaner.limpiar_precio(precio)
-            results.append({
-                'hotel': nombre,
-                'divisa': divisa,
-                'precio': precio,
-                'review_promedio': calificacion_cualitativa,
-                'comentarios': comentarios,
-                'puntuacion': puntuacion,
-                'ciudad': ciudad,
-                'check_in': checkin_str,
-                'check_out': checkout_str
-            })
             fecha_actual = siguiente_dia
             logger.info(f"✅ ✅ pasando a la siguiente fecha: {fecha_actual}")
         return results
