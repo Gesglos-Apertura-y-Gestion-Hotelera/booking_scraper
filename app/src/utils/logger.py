@@ -18,7 +18,7 @@ class PyCharmCallerFormatter(logging.Formatter):
         # Stack para caller REAL (salta logger internals)
         try:
             stack = inspect.stack()
-            # 0: este método, 1: handler, 2: logger.info, 3: caller real
+            # 0: este méthodo, 1: handler, 2: logger.info, 3: caller real
             caller_frame = stack[3]
             real_file = Path(caller_frame.filename).name
             real_line = caller_frame.lineno

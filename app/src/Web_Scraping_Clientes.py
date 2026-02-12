@@ -5,20 +5,13 @@ Lee JSON desde variable de entorno SHEET_DATA o argumento
 """
 import os
 import re
-import sys
 
-import time
 from datetime import datetime, timedelta
 
 from core.scraper import BookingBaseScraper
-from core.chrome_driver import ChromeDriverFactory
 from utils.cleaner import DataCleaner
 from utils.logger import logger
-from utils.enviar_sheets import enviar_sheets
-from utils.get_sheet_data import get_sheet_data
 
-
-WEBAPP_URL = os.environ.get('WEBAPP_URL')
 
 class ClientesDiarioScraper(BookingBaseScraper):
     """Scraper para búsqueda diaria de clientes"""

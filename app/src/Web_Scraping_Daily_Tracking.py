@@ -4,8 +4,6 @@ Web Scraping Daily Tracking
 Scraping de hoteles por ciudad para seguimiento diario
 Lee datos de ciudades desde variable de entorno SHEET_DATA
 """
-import os
-import sys
 from datetime import datetime, timedelta
 from typing import List, Set
 
@@ -13,12 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
 from core.scraper import BookingBaseScraper
-from core.chrome_driver import ChromeDriverFactory
 from utils.logger import logger
-from utils.enviar_sheets import enviar_sheets
-from utils.get_sheet_data import get_sheet_data
-
-WEBAPP_URL = os.environ.get('WEBAPP_URL')
 
 
 class DailyTrackingScraper(BookingBaseScraper):

@@ -2,15 +2,11 @@
 Web Scraping Competencia Ad-Hoc
 Scraping de competidores en rango de fechas personalizado
 """
-import os
 import re
-import time
 from datetime import datetime, timedelta
 
 from core.scraper import BookingBaseScraper
-from core.chrome_driver import ChromeDriverFactory
 from utils.cleaner import DataCleaner
-from utils.enviar_sheets import enviar_sheets
 from utils.logger import logger
 
 
@@ -39,7 +35,7 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
         Itera día por día desde check_in hasta check_out.
         """
         results = []
-
+        cleaner = DataCleaner()
         # Iterar sobre cada día en el rango de fechas
         fecha_actual = self.check_in
 
@@ -59,6 +55,7 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                 # Normalizar claves (mayúsculas o minúsculas)
                 competidor = comp_data.get('competidor') or comp_data.get('Competidor') or ''
                 ciudad = comp_data.get('ciudad') or comp_data.get('Ciudad') or ''
+                hotel=comp_data.get('hotel') or comp_data.get('Hotel') or ''
 
                 if not competidor or not ciudad:
                     logger.warning(f"⚠️ Datos incompletos: {comp_data}")
@@ -83,22 +80,22 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                     comentarios= self.extract_comentarios()
                 except Exception as e:
                     logger.warning(f"⚠️ {competidor} ({checkin_str}): {e}")
-                    nombre = competidor
+                    nombre = nombre
+
                     precio = "0"
                     calificacion_cualitativa = "No disponible"
                     puntuacion = "0"
                     comentarios = "No disponible"
 
-                cleaner = DataCleaner()
                 divisa, precio = cleaner.limpiar_precio(precio)
                 results.append({
-                    'hotel': nombre,
+                    'hotel': hotel,
                     'divisa': divisa,
                     'precio': precio,
                     'review_promedio': calificacion_cualitativa,
                     'comentarios': comentarios,
                     'puntuacion': puntuacion,
-                    'competidor': competidor,
+                    'competidor': nombre,
                     'ciudad': ciudad,
                     'check_in': checkin_str,
                     'check_out': checkout_str
