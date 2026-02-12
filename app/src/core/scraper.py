@@ -1,4 +1,4 @@
-p"""
+"""
 Clase base para scrapers de Booking.com
 Versión optimizada - Elimina redundancias y consolida lógica común
 """
