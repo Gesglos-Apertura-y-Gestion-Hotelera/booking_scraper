@@ -1,4 +1,4 @@
-"""
+p"""
 Clase base para scrapers de Booking.com
 Versión optimizada - Elimina redundancias y consolida lógica común
 """
@@ -579,7 +579,7 @@ class BookingBaseScraper(ABC):
         time.sleep(5)
         self.close_popup()
         time.sleep(2)
-        self.take_screenshot()
+        #self.take_screenshot()
 
     def take_screenshot(self):
         from selenium import webdriver
