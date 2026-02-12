@@ -112,7 +112,7 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
                     'divisa': divisa,
                     'precio': precio,
                     'review_promedio': calificacion_cualitativa,
-                    'comentarios': comentarios,
+                    'opiniones': comentarios,
                     'puntuacion': puntuacion,
                     'ciudad': ciudad,
                     'check_in': checkin_str,
