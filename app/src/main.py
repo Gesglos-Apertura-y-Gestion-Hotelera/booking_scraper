@@ -164,7 +164,7 @@ def main():
 
 
     scripts_sin_fechas = ["clientes_diario",
-                          "clientes_prevision",
+                          "competencia_diario",
                           "seguimiento_diario"]
     check_in, check_out = None, None
     try:
