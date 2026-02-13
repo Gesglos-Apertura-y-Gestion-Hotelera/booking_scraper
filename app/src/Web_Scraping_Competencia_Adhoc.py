@@ -66,7 +66,6 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                 competidor_ciudad = re.sub(r"\s{1,10}", "+", competidor_ciudad)
 
                 url = self.build_search_url(competidor_ciudad, checkin_str, checkout_str)
-                logger.info(f"URL: {url}")
                 logger.info(f"🔍 {competidor} | {checkin_str}")
 
                 self.open_url(url)
@@ -75,13 +74,12 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                 try:
                     nombre = self.extract_name()
                     precio = self.extract_price()
-                    puntuacion= self.extract_puntuacion(),
-                    calificacion_cualitativa= self.extract_calificacion_cualitativa(),
-                    comentarios= self.extract_comentarios()
+                    puntuacion = self.extract_puntuacion()
+                    calificacion_cualitativa = self.extract_calificacion_cualitativa()
+                    comentarios = self.extract_comentarios()
                 except Exception as e:
                     logger.warning(f"⚠️ {competidor} ({checkin_str}): {e}")
-                    nombre = nombre
-
+                    nombre = competidor
                     precio = "0"
                     calificacion_cualitativa = "No disponible"
                     puntuacion = "0"
@@ -101,7 +99,7 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
                     'check_out': checkout_str
                 })
 
-                logger.info(f"✅ {nombre} - {precio}")
+                logger.info(f"✅ {competidor} - {precio}")
 
             # Avanzar al siguiente día
             fecha_actual = siguiente_dia

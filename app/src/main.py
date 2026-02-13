@@ -188,7 +188,7 @@ def main():
         logger.info("=" * 80)
         logger.info(f"✅ PROCESO COMPLETADO EXITOSAMENTE")
         import pprint as pp
-        logger.info(f"📊 Total de registros: {len(results)} resultados: {pp.pprint(results)}")
+        logger.info(f"📊 Total de registros: {len(results)} resultados: {results}")
         logger.info("=" * 80)
 
     except Exception as e:
