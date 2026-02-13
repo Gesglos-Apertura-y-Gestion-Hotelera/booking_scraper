@@ -722,7 +722,7 @@ class BookingBaseScraper(ABC):
 
         # Cada responsabilidad en su propio méthodo
         hotel_data['hotel'] = self._extract_hotel_name(hotel_element)
-        hotel_data['precio'], hotel_data['divisa'] = self._extract_price_info(hotel_element)
+        hotel_data['divisa'], hotel_data['precio'] = self._extract_price_info(hotel_element)
         hotel_data['puntuacion'] = self._extract_rating_score(hotel_element)
         hotel_data['review_promedio'] = self._extract_review_text(hotel_element)
         hotel_data['comentarios'] = self._extract_reviews_count(hotel_element)
