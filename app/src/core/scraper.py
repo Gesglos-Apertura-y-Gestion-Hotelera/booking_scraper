@@ -763,7 +763,7 @@ class BookingBaseScraper(ABC):
                 if self._is_valid_price_text(precio_raw):
                     divisa, precio = cleaner.limpiar_precio(precio_raw)
                     logger.info(f"divisa: {divisa}  precio: {precio}")
-                    return str(precio), divisa
+                    return divisa, str(precio)
 
             except NoSuchElementException:
                 logger.error(f"PRECIO NO ENCONTRADO: '{precio_raw}' → {divisa} {precio}")
