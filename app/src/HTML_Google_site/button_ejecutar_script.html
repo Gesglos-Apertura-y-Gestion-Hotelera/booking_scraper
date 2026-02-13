@@ -152,7 +152,7 @@
 
   function ejecutarProceso(btn, scriptKey, check_in = null, check_out = null, ciudad = null) {
     const estado = document.getElementById("mensajeEstado");
-    const urlScript = "https://script.google.com/macros/s/AKfycbyr38_IDYgI3kQIgaiqx1935y2J-ySRF41xpIGhrworAd-qsBIpEILVnwT3I4KA4rO9DA/exec";
+    const urlScript = "https://script.google.com/macros/s/AKfycbwpln6KC9di9-8C4U6P6lgyh6fNyrGb2_N4Gd0ub08REnqNdjKtSXt-VQRRzz7Q-PKSKw/exec";
                        
     btn.disabled = true;
     const contenidoOriginal = btn.getAttribute('data-original-html') || btn.innerHTML;
@@ -166,7 +166,7 @@
 
     const img = new Image();
     img.onload = img.onerror = function() {
-      estado.innerText = "✅ Señal enviada con éxito";
+      estado.innerText = "✅ Información enviada con éxito";
       estado.style.color = "#28a745";
       btn.disabled = false;
       btn.innerHTML = contenidoOriginal;

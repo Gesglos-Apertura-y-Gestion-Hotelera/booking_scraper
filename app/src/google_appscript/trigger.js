@@ -1,83 +1,73 @@
 function doGet(e) {
   try {
-    console.log("=== INICIO DE PETICIÓN ===");
-  
-    // Capturamos los datos de la URL
     var scriptKey   = (e && e.parameter && e.parameter.script_key) ? e.parameter.script_key : "no_key";
-    var checkIn     = (e && e.parameter && e.parameter.check_in)   ? e.parameter.check_in   : "no_checkin";
-    var checkOut    = (e && e.parameter && e.parameter.check_out)  ? e.parameter.check_out  : "no_checkout";
-    var ciudadInput = (e && e.parameter && e.parameter.ciudad)     ? e.parameter.ciudad     : "no_city";
-  
-    console.log("Parámetros recibidos: " + scriptKey + " | Ciudad: " + ciudadInput);
+    var checkIn     = (e && e.parameter && e.parameter.check_in)   ? e.parameter.check_in   : "";
+    var checkOut    = (e && e.parameter && e.parameter.check_out)  ? e.parameter.check_out  : "";
+    var ciudadInput = (e && e.parameter && e.parameter.ciudad)     ? e.parameter.ciudad     : "";
   
     var records = [];
+    var spreadsheetId = "1ZsS-tWfgn3Zzl4DNWX9u1UagRfC4ZwydeZPMymVfOGY";
 
     if (scriptKey === "personalizado") {
       records.push({
-        "ciudad": ciudadInput,
+        "ciudad": String(ciudadInput).trim(),
         "hotel": "Personalizado"
       });
     } else {
-      var spreadsheetId = "1ZsS-tWfgn3Zzl4DNWX9u1UagRfC4ZwydeZPMymVfOGY";
-      var sheetName = "";
-
-      // Determinamos la hoja según el scriptKey
-      switch (scriptKey) {
-        case "competencia_diario":
-        case "competencia_prevision":
-          sheetName = "Competencia";
-          break;
-        default:
-          sheetName = "Cliente";
-      }
-
+      var esCompetencia = (scriptKey === "competencia_diario" || scriptKey === "competencia_prevision");
+      var sheetName = esCompetencia ? "Competencia" : "Cliente";
       var sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName(sheetName);
+      
       if (!sheet) throw new Error("No se encontró la hoja: " + sheetName);
 
-      var lastRow = sheet.getLastRow();
-      if (lastRow < 2) {
-        return ContentService.createTextOutput(JSON.stringify({
-          "status": "error", "message": "Hoja vacía o sin datos: " + sheetName
-        })).setMimeType(ContentService.MimeType.JSON);
-      }
+      var fullData = sheet.getDataRange().getValues();
+      var headers = fullData[0];
+      var dataRows = fullData.slice(1);
 
-      // --- LÓGICA DE DETECCIÓN DINÁMICA POR ETIQUETA ---
-      // Obtenemos todos los datos (incluyendo cabecera en fila 1)
-      var fullData = sheet.getRange(1, 1, lastRow, sheet.getLastColumn()).getValues();
-      var headers = fullData[0]; // Fila 1: Nombres de columnas
-      var dataRows = fullData.slice(1); // Fila 2 en adelante: Datos
-
-      // Buscamos los índices de las columnas por su nombre exacto
       var colIdxCiudad = headers.indexOf("Ciudad");
-      var colIdxHotel  = headers.indexOf("Hotel");
 
-      // Validamos que existan las columnas mínimas
-      if (colIdxCiudad === -1 || colIdxHotel === -1) {
-        throw new Error("No se encontraron las columnas 'Ciudad' o 'Hotel' en la hoja " + sheetName);
+      if (esCompetencia) {
+        var colIdxComp = headers.indexOf("Competidor");
+        var colIdxHotel = headers.indexOf("Hotel");
+        if (colIdxCiudad === -1 || colIdxComp === -1) throw new Error("Faltan columnas Ciudad/Competidor");
+        
+        // BLOQUE DE COMPETENCIA (El que te está fallando)
+        records = dataRows.map(function(row) {
+          return {
+            "ciudad": String(row[colIdxCiudad]).replace(/[\r\n]+/g, " ").trim(),
+            "competidor": String(row[colIdxComp]).replace(/[\r\n]+/g, " ").trim(),
+            "hotel": String(row[colIdxHotel]).replace(/[\r\n]+/g, " ").trim()
+          };
+        });
+      } else {
+        var colIdxHotel = headers.indexOf("Hotel");
+        if (colIdxCiudad === -1 || colIdxHotel === -1) throw new Error("Faltan columnas Ciudad/Hotel");
+        
+        // BLOQUE DE CLIENTE (El que te funciona)
+        records = dataRows.map(function(row) {
+          return {
+            "ciudad": String(row[colIdxCiudad]).replace(/[\r\n]+/g, " ").trim(),
+            "hotel": String(row[colIdxHotel]).replace(/[\r\n]+/g, " ").trim()
+          };
+        });
       }
-
-      // Mapeamos los datos usando los nombres detectados
-      records = dataRows.map(function(row) {
-        return {
-          "ciudad": String(row[colIdxCiudad]),
-          "hotel": String(row[colIdxHotel])
-        };
-      });
     }
     
-    // Configuración de GitHub Actions
-    var url = 'https://api.github.com/repos/Gesglos-Apertura-y-Gestion-Hotelera/booking_scraper/actions/workflows/selenium.yml/dispatches';
+    // Forzamos la serialización a un string JSON puro
+    var jsonString = JSON.stringify(records);
     
-    // NOTA: Se recomienda usar PropertiesService para el Token por seguridad
-    var token = "aqui va el token"; 
-    
+    // REFUERZO: Si el string no empieza con '[', lo forzamos (Protección contra optimización de Apps Script)
+    if (typeof jsonString !== "string") {
+      jsonString = JSON.stringify(jsonString);
+    }
+
     var payload = {
       "ref": "main", 
       "inputs": {
-        "script_key": scriptKey,
-        "sheet_data": JSON.stringify(records),
-        "check_in": checkIn,
-        "check_out": checkOut
+        "script_key": String(scriptKey),
+        "sheet_data": jsonString, 
+        "check_in": String(checkIn),
+        "check_out": String(checkOut)
       }
     };
     
@@ -85,32 +75,24 @@ function doGet(e) {
       "method": "POST",
       "contentType": "application/json",
       "headers": {
-        "Authorization": "Bearer " + token,
+        "Authorization": "Bearer AQUI VA EL TOKEN",
         "Accept": "application/vnd.github.v3+json"
       },
-      "muteHttpExceptions": true,
-      "payload": JSON.stringify(payload)
+      "payload": JSON.stringify(payload),
+      "muteHttpExceptions": true
     };
 
-    var response = UrlFetchApp.fetch(url, options);
-    var code = response.getResponseCode();
+    var response = UrlFetchApp.fetch('https://api.github.com/repos/Gesglos-Apertura-y-Gestion-Hotelera/booking_scraper/actions/workflows/selenium.yml/dispatches', options);
     
     return ContentService.createTextOutput(JSON.stringify({
-      "status": code === 204 ? "success" : "error",
-      "code": code,
-      "records_sent": records.length,
-      "sheet_used": sheetName || "N/A"
+      "status": response.getResponseCode() === 204 ? "success" : "error",
+      "debug_json": jsonString // Revisa esto en tu navegador para ver si tiene comillas
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
-    Logger.log("ERROR: " + error);
-    return ContentService.createTextOutput(JSON.stringify({
-      "status": "error",
-      "message": error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.toString()})).setMimeType(ContentService.MimeType.JSON);
   }
 }
-
 /* 
 
 // Función alternativa para ejecutar manualmente desde el editor
