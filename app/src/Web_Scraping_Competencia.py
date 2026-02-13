@@ -41,7 +41,6 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
             competidor = comp_data.get('competidor') or comp_data.get('Competidor') or ''
             ciudad = comp_data.get('ciudad') or comp_data.get('Ciudad') or ''
             hotel = comp_data.get('hotel') or comp_data.get('Hotel') or ''
-            buscar = comp_data.get('buscar') or comp_data.get('Buscar') or ''
 
             if not competidor or not ciudad:
                 logger.warning(f"⚠️ Datos incompletos: {comp_data}")
@@ -57,14 +56,14 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
 
             # Extraer datos usando métodos heredados
             try:
-                nombre = self.extract_name()
+                nombre_competidor = self.extract_name()
                 precio = self.extract_price()
                 puntuacion = self.extract_puntuacion()
                 calificacion_cualitativa = self.extract_calificacion_cualitativa()
                 comentarios = self.extract_comentarios()
             except Exception as e:
                 logger.warning(f"⚠️ {competidor} ({checkin_str}): {e}")
-                nombre = competidor
+                nombre_competidor = competidor
                 precio = "0"
                 calificacion_cualitativa = "No disponible"
                 puntuacion = "0"
@@ -72,13 +71,13 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
 
             divisa, precio = cleaner.limpiar_precio(precio)
             results.append({
-                'hotel': nombre,
+                'hotel': hotel,
                 'divisa': divisa,
                 'precio': precio,
                 'review_promedio': calificacion_cualitativa,
                 'comentarios': comentarios,
                 'puntuacion': puntuacion,
-                'competidor': competidor,
+                'competidor': nombre_competidor,
                 'ciudad': ciudad,
                 'check_in': checkin_str,
                 'check_out': checkout_str
