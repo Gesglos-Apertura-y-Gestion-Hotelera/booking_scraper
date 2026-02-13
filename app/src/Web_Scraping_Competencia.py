@@ -59,8 +59,8 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
             try:
                 nombre = self.extract_name()
                 precio = self.extract_price()
-                puntuacion = self.extract_puntuacion(),
-                calificacion_cualitativa = self.extract_calificacion_cualitativa(),
+                puntuacion = self.extract_puntuacion()
+                calificacion_cualitativa = self.extract_calificacion_cualitativa()
                 comentarios = self.extract_comentarios()
             except Exception as e:
                 logger.warning(f"⚠️ {competidor} ({checkin_str}): {e}")

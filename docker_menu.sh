@@ -77,7 +77,7 @@ case $opcion in
   3)
     echo "🚀 Iniciando Scraper Competencia Diario..."
     SCRIPT_KEY="competencia_diario"
-    SHEET_DATA='[{"hotel":"Porto Marina Hotel","competidor":"Hotel Bambu Guatape","ciudad":"Guatapé","buscar":"Hotel Bambu Guatape, Guatapé"},{"hotel":"1714 Hotel Boutique Guatapé","competidor":"El Tropico Boutique Hotel","ciudad":"El peñol","buscar":"El Tropico Boutique Hotel, El peñol"},{"hotel":"Porto Marina Hotel","competidor":"Arvum Hotel Boutique","ciudad":"Guatapé","buscar":"Arvum Hotel Boutique, Guatapé"}]'
+    SHEET_DATA='[{"hotel":"Hotel Brisas La Gaviota Mariquit-Tolima","competidor":"Arvum Hotel Boutique","ciudad":"guatape","buscar":"Arvum Hotel Boutique, El peñol"},{"hotel":"1714 Hotel Boutique Guatapé","competidor":"El Tropico Boutique Hotel","ciudad":"El peñol","buscar":"El Tropico Boutique Hotel, El peñol"},{"hotel":"Porto Marina Hotel","competidor":"Hotel Bambu Guatape","ciudad":"Guatapé","buscar":"Hotel Bambu Guatape, Guatapé"}]'
 
     run_docker "$SCRIPT_KEY" "$SHEET_DATA" "" ""
     ;;
