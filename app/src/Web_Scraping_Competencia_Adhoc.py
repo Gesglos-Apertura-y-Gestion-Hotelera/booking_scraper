@@ -87,13 +87,13 @@ class CompetenciaDiarioScraperAdHoc(BookingBaseScraper):
 
                 divisa, precio = cleaner.limpiar_precio(precio)
                 results.append({
-                    'hotel': hotel,
+                    'hotel': nombre,
                     'divisa': divisa,
                     'precio': precio,
                     'review_promedio': calificacion_cualitativa,
                     'comentarios': comentarios,
                     'puntuacion': puntuacion,
-                    'competidor': nombre,
+                    'competidor': competidor,
                     'ciudad': ciudad,
                     'check_in': checkin_str,
                     'check_out': checkout_str
