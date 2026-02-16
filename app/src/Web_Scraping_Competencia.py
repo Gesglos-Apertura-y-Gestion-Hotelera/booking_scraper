@@ -56,14 +56,12 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
 
             # Extraer datos usando métodos heredados
             try:
-                nombre_competidor = self.extract_name()
                 precio = self.extract_price()
                 puntuacion = self.extract_puntuacion()
                 calificacion_cualitativa = self.extract_calificacion_cualitativa()
                 comentarios = self.extract_comentarios()
             except Exception as e:
                 logger.warning(f"⚠️ {competidor} ({checkin_str}): {e}")
-                nombre_competidor = competidor
                 precio = "0"
                 calificacion_cualitativa = "No disponible"
                 puntuacion = "0"
@@ -77,7 +75,7 @@ class CompetenciaDiarioScraper(BookingBaseScraper):
                 'review_promedio': calificacion_cualitativa,
                 'comentarios': comentarios,
                 'puntuacion': puntuacion,
-                'competidor': nombre_competidor,
+                'competidor': competidor,
                 'ciudad': ciudad,
                 'check_in': checkin_str,
                 'check_out': checkout_str

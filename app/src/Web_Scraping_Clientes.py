@@ -78,7 +78,7 @@ class ClientesDiarioScraper(BookingBaseScraper):
             cleaner = DataCleaner()
             divisa, precio = cleaner.limpiar_precio(precio)
             results.append({
-                'hotel': nombre,
+                'hotel': hotel,
                 'divisa': divisa,
                 'precio': precio,
                 'review_promedio': review_promedio,
