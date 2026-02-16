@@ -103,7 +103,7 @@ class ClientesDiarioScraperAdHoc(BookingBaseScraper):
 
                 divisa, precio = cleaner.limpiar_precio(precio)
                 results.append({
-                    'hotel': nombre,
+                    'hotel': hotel,
                     'divisa': divisa,
                     'precio': precio,
                     'review_promedio': calificacion_cualitativa,
